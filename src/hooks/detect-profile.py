@@ -10,9 +10,17 @@ try:
     cwd = d.get("cwd") or os.getcwd() if isinstance(d, dict) else os.getcwd()
     if os.path.exists(os.path.join(cwd, ".claude", "profile")):
         sys.exit(0)
-    with open(os.path.join(cwd, "pyproject.toml"), encoding="utf-8") as f:
-        if "fastapi" not in f.read().lower():
-            sys.exit(0)
+    found = False
+    for rel in ("pyproject.toml", os.path.join("backend", "pyproject.toml")):
+        try:
+            with open(os.path.join(cwd, rel), encoding="utf-8") as f:
+                if "fastapi" in f.read().lower():
+                    found = True
+                    break
+        except OSError:
+            pass
+    if not found:
+        sys.exit(0)
 except Exception:
     sys.exit(0)
 

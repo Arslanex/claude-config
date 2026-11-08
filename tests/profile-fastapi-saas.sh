@@ -10,23 +10,6 @@ cd "$d" && git init -q
 HOME="$h" bash "$R/src/templates/project/init.sh" --kind fastapi-saas --pkg demo >/dev/null
 HOME="$h" bash "$R/src/templates/project/init.sh" --kind fastapi-saas --pkg demo >/dev/null
 [ -z "$(find . -name '*.proposed' -not -path './.git/*')" ] || { echo "FAIL: ikinci calistirma .proposed uretti"; exit 1; }
-cat > backend/pyproject.toml <<'EOF'
-[project]
-name = "demo"
-version = "0.0.0"
-requires-python = ">=3.12"
-dependencies = ["fastapi"]
-
-[dependency-groups]
-dev = ["ruff", "mypy", "pytest", "pytest-cov", "import-linter"]
-
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
-[tool.hatch.build.targets.wheel]
-packages = ["src/demo"]
-EOF
 printf 'import uuid\n\n\ndef new_id() -> str:\n    return str(uuid.uuid4())\n' > backend/src/demo/core/ids.py
 printf 'from demo.core.ids import new_id\n\n\ndef test_new_id_is_uuid_string():\n    assert len(new_id()) == 36\n' > backend/tests/unit/test_ids.py
 make check
