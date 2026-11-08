@@ -235,7 +235,7 @@ class Doc:
 
 def _is_generated(path, root):
     rel = path.relative_to(root).as_posix()
-    return path.name == "INDEX.md" or rel == GRAPH_PATH
+    return path.name in ("INDEX.md", "README.md") or rel == GRAPH_PATH
 
 
 def load_docs(root):

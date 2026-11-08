@@ -1,4 +1,7 @@
 {
+  "permissions": {
+    "allow": ["Bash(python3 tools/docs.py *)"]
+  },
   "sandbox": {
     "filesystem": {
       "denyRead": ["./.env.production", "./.env.prod", "./.env.staging", "./secrets"]
