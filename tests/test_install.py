@@ -39,5 +39,54 @@ class TestInstallDryRun(unittest.TestCase):
         self.assertEqual(r.returncode, 1)
 
 
+def run_install(home, *args):
+    return subprocess.run(
+        ["bash", str(INSTALL), *args],
+        capture_output=True,
+        text=True,
+        env={"HOME": home, "PATH": os.environ["PATH"]},
+        timeout=30,
+    )
+
+
+class TestInstallPermissions(unittest.TestCase):
+    def test_overwrites_read_only_files(self):
+        with tempfile.TemporaryDirectory() as home:
+            hooks = Path(home) / ".claude" / "hooks"
+            hooks.mkdir(parents=True)
+            target = hooks / "guard.py"
+            target.write_text("old")
+            target.chmod(0o555)
+
+            r = run_install(home)
+
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertEqual(target.read_text(), (ROOT / "src/hooks/guard.py").read_text())
+
+    def test_hooks_are_read_only_after_install(self):
+        with tempfile.TemporaryDirectory() as home:
+            r = run_install(home)
+
+            self.assertEqual(r.returncode, 0, r.stderr)
+            files = [p for p in (Path(home) / ".claude" / "hooks").rglob("*") if p.is_file()]
+            self.assertTrue(files)
+            for p in files:
+                self.assertEqual(p.stat().st_mode & 0o777, 0o555, p)
+
+    def test_dry_run_does_not_change_hook_modes(self):
+        with tempfile.TemporaryDirectory() as home:
+            hooks = Path(home) / ".claude" / "hooks"
+            hooks.mkdir(parents=True)
+            target = hooks / "guard.py"
+            target.write_text("old")
+            target.chmod(0o644)
+
+            r = run_install(home, "--dry-run")
+
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertEqual(target.stat().st_mode & 0o777, 0o644)
+            self.assertEqual(target.read_text(), "old")
+
+
 if __name__ == "__main__":
     unittest.main()

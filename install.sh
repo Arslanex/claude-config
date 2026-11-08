@@ -48,7 +48,13 @@ while IFS= read -r -d '' file; do
 done < <(find "$SRC" -type f ! -name '.DS_Store' -print0 | sort -z)
 
 if [ "$DRY_RUN" -eq 1 ]; then
+  echo "[dry-run] chmod   555 $DEST/hooks/*"
   echo "[dry-run] nothing was changed"
-elif [ -d "$BACKUP" ]; then
-  echo "backup saved to $BACKUP"
+else
+  if [ -d "$DEST/hooks" ]; then
+    find "$DEST/hooks" -type f -exec chmod 555 {} +
+  fi
+  if [ -d "$BACKUP" ]; then
+    echo "backup saved to $BACKUP"
+  fi
 fi
