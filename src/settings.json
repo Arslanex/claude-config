@@ -152,6 +152,11 @@
           {
             "type": "command",
             "command": "python3 \"$HOME/.claude/hooks/notify.py\""
+          },
+          {
+            "type": "command",
+            "command": "python3 \"$HOME/.claude/hooks/stop-gate.py\"",
+            "timeout": 330
           }
         ]
       }
