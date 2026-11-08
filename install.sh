@@ -42,7 +42,7 @@ while IFS= read -r -d '' file; do
     echo "[dry-run] copy    $SRC/$rel -> $DEST/$rel"
   else
     mkdir -p "$DEST/$(dirname "$rel")"
-    cp -p "$file" "$DEST/$rel"
+    cp -pf "$file" "$DEST/$rel"
     echo "installed $rel"
   fi
 done < <(find "$SRC" -type f ! -name '.DS_Store' -print0 | sort -z)
