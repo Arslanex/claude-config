@@ -2,7 +2,13 @@ from pathlib import Path
 
 TESTS = Path(__file__).resolve().parents[1]
 GROUPS = {"unit", "integration", "e2e", "smoke"}
-ALLOWED = GROUPS | {"support", "conftest.py", "__init__.py", "__pycache__"}
+ALLOWED = GROUPS | {
+    "support",
+    "conftest.py",
+    "__init__.py",
+    "__pycache__",
+    ".claude",  # sandbox/arac bos bir .claude/.cc-writes dizini birakir
+}
 
 
 def test_top_level_layout():
