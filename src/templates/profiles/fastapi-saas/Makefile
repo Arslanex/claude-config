@@ -1,5 +1,6 @@
 BACKEND ?= backend
 TEST_DATABASE_URL ?= postgresql+asyncpg://test:test@localhost:55463/test
+export UV_CACHE_DIR ?= $(CURDIR)/.cache/uv
 .PHONY: help check lint typecheck arch test-unit test-integration test-e2e test-smoke migrate migrate-check openapi docs-lint stack-test-up stack-test-down
 help:
 	@echo 'Targets: check lint typecheck arch test-unit test-integration test-e2e test-smoke migrate migrate-check openapi docs-lint stack-test-up stack-test-down'
