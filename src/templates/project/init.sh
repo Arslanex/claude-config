@@ -3,14 +3,16 @@
 # --upgrade: only update tools/docs.py, and only if the template engine version is newer.
 set -euo pipefail
 
-usage() { echo "Usage: $0 [--upgrade] [--kind <profile>]"; }
+usage() { echo "Usage: $0 [--upgrade] [--kind <profile> [--pkg <python_package>]]"; }
 
 UPGRADE=0
 KIND=""
+PKG=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --upgrade) UPGRADE=1; shift ;;
     --kind) KIND="${2:-}"; [ -n "$KIND" ] || { usage >&2; exit 1; }; shift 2 ;;
+    --pkg) PKG="${2:-}"; case "$PKG" in ""|[0-9]*|*[!a-z0-9_]*) usage >&2; exit 1 ;; esac; shift 2 ;;
     -h|--help) usage; exit 0 ;;
     *) usage >&2; exit 1 ;;
   esac
@@ -42,6 +44,7 @@ fi
 
 mkdir -p .claude
 
+subst() { [ -n "$PKG" ] && { sed -i.bak "s/__PKG__/$PKG/g" "$1" && rm -f "$1.bak"; } || true; }
 # Profile (--kind): copy missing files, never overwrite; differing files get a .proposed copy.
 if [ -n "$KIND" ]; then
   P="$T/../profiles/$KIND"
@@ -51,8 +54,10 @@ if [ -n "$KIND" ]; then
     if [ ! -e "$rel" ]; then
       mkdir -p "$(dirname "$rel")"
       cp -p "$f" "$rel"
+      subst "$rel"
     elif ! cmp -s "$f" "$rel"; then
       cp "$f" "$rel.proposed"
+      subst "$rel.proposed"
       echo "conflict: $rel exists; wrote $rel.proposed"
     fi
   done < <(find "$P" -type f ! -name '.DS_Store' -print0 | sort -z)

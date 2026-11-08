@@ -3,7 +3,7 @@
 Durum: Kabul (stack varsayımı onay bekliyor: FastAPI + SQLAlchemy async)
 
 ## Karar
-- Katmanlar, bağımlılık yönü yukarıdan aşağıya: `interfaces | workers` > `features` > `lib` > `infra` > `core` | `config`.
+- Katmanlar, bağımlılık yönü yukarıdan aşağıya: `interface | worker` > `features` > `lib` > `infra` > `core` | `config`.
   Kural `import-linter` ile zorlanır (`make arch`), tavsiye olarak bırakılmaz.
 - Unit of Work, iletişim protokolünün seviyesinde başlar: HTTP isteği, CLI komutu veya worker mesajı başına bir UoW.
   Servisler asla commit etmez.
