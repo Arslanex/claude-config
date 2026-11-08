@@ -1,7 +1,7 @@
 BACKEND ?= backend
-.PHONY: help check lint typecheck arch test-unit test-integration test-e2e test-smoke migrate migrate-check openapi docs-lint
+.PHONY: help check lint typecheck arch test-unit test-integration test-e2e test-smoke migrate migrate-check openapi docs-lint stack-test-up stack-test-down
 help:
-	@echo 'Targets: check lint typecheck arch test-unit test-integration test-e2e test-smoke migrate migrate-check openapi docs-lint'
+	@echo 'Targets: check lint typecheck arch test-unit test-integration test-e2e test-smoke migrate migrate-check openapi docs-lint stack-test-up stack-test-down'
 check: lint typecheck arch test-unit docs-lint
 lint:
 	cd $(BACKEND) && uv run ruff check . && uv run ruff format --check .
@@ -25,3 +25,7 @@ openapi:
 	@echo 'openapi: uygulama yolu tanimli degil (profilde doldur)'; exit 1
 docs-lint:
 	@python3 tools/docs.py lint
+stack-test-up:
+	docker compose -f deploy/compose.yaml -f deploy/compose.test.yaml up -d --wait postgres redis
+stack-test-down:
+	docker compose -f deploy/compose.yaml -f deploy/compose.test.yaml down -v

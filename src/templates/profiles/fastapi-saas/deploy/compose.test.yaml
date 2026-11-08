@@ -1,0 +1,15 @@
+# Entegrasyon test stack'i: yalniz postgres ve redis. Testler host'ta calisir.
+services:
+  postgres:
+    environment:
+      POSTGRES_USER: test
+      POSTGRES_PASSWORD: test
+      POSTGRES_DB: test
+    ports: ["55463:5432"]
+    tmpfs: ["/var/lib/postgresql/data"]
+  redis:
+    ports: ["56410:6379"]
+  api:
+    profiles: ["never"]
+  worker:
+    profiles: ["never"]

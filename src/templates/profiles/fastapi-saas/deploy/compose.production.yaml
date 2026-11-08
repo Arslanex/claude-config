@@ -1,0 +1,15 @@
+# Uretim: imaj registry'den gelir, secret'lar .env.production dosyasindan (repoya girmez).
+services:
+  postgres:
+    env_file: ["../.env.production"]
+    restart: unless-stopped
+  redis:
+    restart: unless-stopped
+  api:
+    image: ${API_IMAGE:?API_IMAGE gerekli}
+    env_file: ["../.env.production"]
+    restart: unless-stopped
+  worker:
+    image: ${API_IMAGE:?API_IMAGE gerekli}
+    env_file: ["../.env.production"]
+    restart: unless-stopped
