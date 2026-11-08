@@ -3,17 +3,21 @@
 # --upgrade: only update tools/docs.py, and only if the template engine version is newer.
 set -euo pipefail
 
-usage() { echo "Usage: $0 [--upgrade]"; }
+usage() { echo "Usage: $0 [--upgrade] [--kind <profile>]"; }
 
 UPGRADE=0
-case "${1:-}" in
-  "") ;;
-  --upgrade) UPGRADE=1 ;;
-  -h|--help) usage; exit 0 ;;
-  *) usage >&2; exit 1 ;;
-esac
+KIND=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --upgrade) UPGRADE=1; shift ;;
+    --kind) KIND="${2:-}"; [ -n "$KIND" ] || { usage >&2; exit 1; }; shift 2 ;;
+    -h|--help) usage; exit 0 ;;
+    *) usage >&2; exit 1 ;;
+  esac
+done
 
 T="$HOME/.claude/templates/project"
+if [ -n "$KIND" ] && [ ! -d "$T/../profiles/$KIND" ]; then echo "unknown profile: $KIND" >&2; exit 1; fi
 
 engine_version() {
   sed -n 's/^DOCS_ENGINE_VERSION *= *\([0-9][0-9]*\).*/\1/p' "$1" 2>/dev/null | head -n 1
@@ -37,6 +41,23 @@ if [ "$UPGRADE" -eq 1 ]; then
 fi
 
 mkdir -p .claude
+
+# Profile (--kind): copy missing files, never overwrite; differing files get a .proposed copy.
+if [ -n "$KIND" ]; then
+  P="$T/../profiles/$KIND"
+  [ -d "$P" ] || { echo "unknown profile: $KIND" >&2; exit 1; }
+  while IFS= read -r -d '' f; do
+    rel="${f#"$P"/}"
+    if [ ! -e "$rel" ]; then
+      mkdir -p "$(dirname "$rel")"
+      cp -p "$f" "$rel"
+    elif ! cmp -s "$f" "$rel"; then
+      cp "$f" "$rel.proposed"
+      echo "conflict: $rel exists; wrote $rel.proposed"
+    fi
+  done < <(find "$P" -type f ! -name '.DS_Store' -print0 | sort -z)
+  echo "$KIND" > .claude/profile
+fi
 [ -e .claude/settings.json ] || cp "$T/settings.json" .claude/settings.json
 [ -e CLAUDE.md ] || cp "$T/CLAUDE.md" CLAUDE.md
 [ -e Makefile ] || cp "$T/Makefile" Makefile
