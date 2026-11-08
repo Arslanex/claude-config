@@ -112,7 +112,7 @@ class NewTests(TempRoot):
     def test_creates_file_with_valid_front_matter(self):
         code, out, _ = run("new", "adr", "Use SQLite", "--root", self.root)
         self.assertEqual(code, 0)
-        path = self.root / "20-decisions" / "ADR-0001-use-sqlite.md"
+        path = self.root / "02-decisions" / "ADR-0001-use-sqlite.md"
         self.assertTrue(path.exists())
         data, _ = docs.parse_front_matter(path.read_text())
         self.assertEqual(data["id"], "ADR-0001")
@@ -122,17 +122,17 @@ class NewTests(TempRoot):
     def test_id_increments(self):
         run("new", "adr", "First", "--root", self.root)
         run("new", "adr", "Second", "--root", self.root)
-        self.assertTrue((self.root / "20-decisions" / "ADR-0002-second.md").exists())
+        self.assertTrue((self.root / "02-decisions" / "ADR-0002-second.md").exists())
 
     def test_kinds_prefixes_and_folders(self):
         expected = {
-            "adr": "20-decisions/ADR-0001-x.md",
-            "task": "50-work/tasks/T-0001-x.md",
-            "module": "10-architecture/modules/ARCH-0001-x.md",
-            "domain": "30-domains/x/DOM-0001-x.md",
-            "plan": "50-work/plans/PLAN-0001-x.md",
-            "handoff": "50-work/handoffs/HO-0001-x.md",
-            "log": "50-work/log/LOG-0001-x.md",
+            "adr": "02-decisions/ADR-0001-x.md",
+            "task": "05-work/tasks/T-0001-x.md",
+            "module": "01-architecture/modules/ARCH-0001-x.md",
+            "domain": "03-domains/x/DOM-0001-x.md",
+            "plan": "05-work/plans/PLAN-0001-x.md",
+            "handoff": "05-work/handoffs/HO-0001-x.md",
+            "log": "05-work/log/LOG-0001-x.md",
         }
         for kind, rel in expected.items():
             with self.subTest(kind):
@@ -142,27 +142,27 @@ class NewTests(TempRoot):
     def test_id_is_global_per_prefix_not_per_folder(self):
         write_doc(self.root, "elsewhere/whatever.md", id="ADR-0007")
         run("new", "adr", "Next", "--root", self.root)
-        self.assertTrue((self.root / "20-decisions" / "ADR-0008-next.md").exists())
+        self.assertTrue((self.root / "02-decisions" / "ADR-0008-next.md").exists())
 
     def test_collision_with_other_branches(self):
         git(self.base, "init", "-q", "-b", "main")
         git(self.base, "commit", "-q", "--allow-empty", "-m", "init")
         git(self.base, "checkout", "-q", "-b", "feature")
-        write_doc(self.root, "20-decisions/ADR-0005-x.md", id="ADR-0005")
+        write_doc(self.root, "02-decisions/ADR-0005-x.md", id="ADR-0005")
         git(self.base, "add", "-A")
         git(self.base, "commit", "-q", "-m", "add adr")
         git(self.base, "update-ref", "refs/remotes/origin/remote-only", "HEAD")
         git(self.base, "checkout", "-q", "main")
         # make a remote-only ID that exists on no local branch
         git(self.base, "checkout", "-q", "--detach", "feature")
-        write_doc(self.root, "20-decisions/ADR-0009-y.md", id="ADR-0009")
+        write_doc(self.root, "02-decisions/ADR-0009-y.md", id="ADR-0009")
         git(self.base, "add", "-A")
         git(self.base, "commit", "-q", "-m", "remote adr")
         git(self.base, "update-ref", "refs/remotes/origin/other", "HEAD")
         git(self.base, "checkout", "-q", "main")
         self.assertFalse(list(self.root.rglob("*.md")))
         run("new", "adr", "Fresh", "--root", self.root)
-        self.assertTrue((self.root / "20-decisions" / "ADR-0010-fresh.md").exists())
+        self.assertTrue((self.root / "02-decisions" / "ADR-0010-fresh.md").exists())
 
     def test_works_without_git(self):
         self.assertIsNone(docs.repo_info(self.root))
@@ -175,8 +175,8 @@ class LintTests(TempRoot):
         return code, out
 
     def test_clean_docs_pass(self):
-        write_doc(self.root, "20-decisions/a.md")
-        write_doc(self.root, "20-decisions/b.md", id="ADR-0002", depends_on="[ADR-0001]")
+        write_doc(self.root, "02-decisions/a.md")
+        write_doc(self.root, "02-decisions/b.md", id="ADR-0002", depends_on="[ADR-0001]")
         self.assertEqual(self.lint(), (0, "0 error(s), 0 warning(s)\n"))
 
     def test_missing_required_field(self):
@@ -237,12 +237,12 @@ class LintTests(TempRoot):
         self.assertEqual(self.lint("--strict")[0], 1)
 
     def test_superseded_outside_archive_warning(self):
-        write_doc(self.root, "20-decisions/a.md", status="superseded")
-        write_doc(self.root, "90-archive/b.md", id="ADR-0002", status="superseded")
+        write_doc(self.root, "02-decisions/a.md", status="superseded")
+        write_doc(self.root, "99-archive/b.md", id="ADR-0002", status="superseded")
         code, out = self.lint()
         self.assertEqual(code, 0)
-        self.assertIn("20-decisions/a.md: status is superseded", out)
-        self.assertNotIn("90-archive/b.md", out)
+        self.assertIn("02-decisions/a.md: status is superseded", out)
+        self.assertNotIn("99-archive/b.md", out)
 
     def _code_repo(self, updated):
         git(self.base, "init", "-q", "-b", "main")
@@ -276,20 +276,20 @@ class IndexTests(TempRoot):
 
     def setUp(self):
         super().setUp()
-        write_doc(self.root, "20-decisions/ADR-0001-a.md", title="Pipe | title")
-        write_doc(self.root, "30-domains/billing/DOM-0001-b.md", id="DOM-0001", title="Billing")
-        write_doc(self.root, "50-work/tasks/T-0002-c.md", id="T-0002", title="Two")
-        write_doc(self.root, "50-work/tasks/T-0010-d.md", id="T-0010", title="Ten")
+        write_doc(self.root, "02-decisions/ADR-0001-a.md", title="Pipe | title")
+        write_doc(self.root, "03-domains/billing/DOM-0001-b.md", id="DOM-0001", title="Billing")
+        write_doc(self.root, "05-work/tasks/T-0002-c.md", id="T-0002", title="Two")
+        write_doc(self.root, "05-work/tasks/T-0010-d.md", id="T-0010", title="Ten")
 
     def test_generates_root_section_and_domain_indexes(self):
         self.assertEqual(run("index", "--root", self.root)[0], 0)
         snap = self.snapshot()
-        self.assertEqual(set(snap), {"INDEX.md", "20-decisions/INDEX.md", "30-domains/INDEX.md",
-                                     "30-domains/billing/INDEX.md", "50-work/INDEX.md"})
-        self.assertIn("[20-decisions](20-decisions/INDEX.md) | 1", snap["INDEX.md"])
-        self.assertIn("[ADR-0001](ADR-0001-a.md) | Pipe \\| title", snap["20-decisions/INDEX.md"])
-        self.assertIn("[DOM-0001](DOM-0001-b.md)", snap["30-domains/billing/INDEX.md"])
-        work = snap["50-work/INDEX.md"]
+        self.assertEqual(set(snap), {"INDEX.md", "02-decisions/INDEX.md", "03-domains/INDEX.md",
+                                     "03-domains/billing/INDEX.md", "05-work/INDEX.md"})
+        self.assertIn("[02-decisions](02-decisions/INDEX.md) | 1", snap["INDEX.md"])
+        self.assertIn("[ADR-0001](ADR-0001-a.md) | Pipe \\| title", snap["02-decisions/INDEX.md"])
+        self.assertIn("[DOM-0001](DOM-0001-b.md)", snap["03-domains/billing/INDEX.md"])
+        work = snap["05-work/INDEX.md"]
         self.assertLess(work.index("T-0002"), work.index("T-0010"))  # numeric order
 
     def test_second_run_is_identical(self):
@@ -331,12 +331,12 @@ class IndexTests(TempRoot):
 
 class GraphTests(TempRoot):
     def test_mermaid_graph_from_depends_on(self):
-        write_doc(self.root, "10-architecture/modules/a.md", id="ARCH-0001", title="Api")
-        write_doc(self.root, "10-architecture/modules/b.md", id="ARCH-0002", title='Db "core"',
+        write_doc(self.root, "01-architecture/modules/a.md", id="ARCH-0001", title="Api")
+        write_doc(self.root, "01-architecture/modules/b.md", id="ARCH-0002", title='Db "core"',
                   depends_on="[ARCH-0001, ARCH-0099]")
-        write_doc(self.root, "20-decisions/c.md", id="ADR-0001", title="Lonely")
+        write_doc(self.root, "02-decisions/c.md", id="ADR-0001", title="Lonely")
         self.assertEqual(run("graph", "--root", self.root)[0], 0)
-        text = (self.root / "10-architecture" / "graph.md").read_text()
+        text = (self.root / "01-architecture" / "graph.md").read_text()
         self.assertIn("```mermaid\ngraph LR", text)
         self.assertIn("ARCH_0002 --> ARCH_0001", text)
         self.assertIn('ARCH_0002["ARCH-0002 - Db \'core\'"]', text)
@@ -347,7 +347,7 @@ class GraphTests(TempRoot):
         write_doc(self.root, "a.md", id="ARCH-0001")
         write_doc(self.root, "b.md", id="ARCH-0002", depends_on="[ARCH-0001]")
         run("graph", "--root", self.root)
-        path = self.root / "10-architecture" / "graph.md"
+        path = self.root / "01-architecture" / "graph.md"
         path.write_text("Intro.\n\n" + path.read_text())
         run("graph", "--root", self.root)
         first = path.read_text()

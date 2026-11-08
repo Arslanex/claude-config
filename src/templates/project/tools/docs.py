@@ -10,7 +10,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-DOCS_ENGINE_VERSION = 1
+DOCS_ENGINE_VERSION = 2
 
 REQUIRED = ("id", "title", "status", "area", "updated")
 STATUSES = ("draft", "accepted", "superseded", "archived")
@@ -25,15 +25,30 @@ MAX_INDEX_LINES = 100
 INDEX_START = "<!-- docs:index:start -->"
 INDEX_END = "<!-- docs:index:end -->"
 
-# kind -> (id prefix, folder relative to root, default status)
+# The single source of truth for the docs layout: area -> (folder, ID prefixes it holds).
+AREAS = {
+    "project": ("00-project", ()),
+    "architecture": ("01-architecture", ("ARCH",)),
+    "decisions": ("02-decisions", ("ADR",)),
+    "domains": ("03-domains", ("DOM",)),
+    "operations": ("04-operations", ()),
+    "work": ("05-work", ("T", "PLAN", "HO", "LOG")),
+    "archive": ("99-archive", ()),
+}
+PREFIX_DIR = {p: folder for folder, prefixes in AREAS.values() for p in prefixes}
+DOMAINS_DIR = AREAS["domains"][0]
+ARCHIVE_DIR = AREAS["archive"][0]
+GRAPH_PATH = f"{AREAS['architecture'][0]}/graph.md"
+
+# kind -> (id prefix, subfolder inside the prefix's area folder)
 KINDS = {
-    "adr": ("ADR", "20-decisions"),
-    "task": ("T", "50-work/tasks"),
-    "module": ("ARCH", "10-architecture/modules"),
-    "domain": ("DOM", "30-domains"),
-    "plan": ("PLAN", "50-work/plans"),
-    "handoff": ("HO", "50-work/handoffs"),
-    "log": ("LOG", "50-work/log"),
+    "adr": ("ADR", ""),
+    "task": ("T", "tasks"),
+    "module": ("ARCH", "modules"),
+    "domain": ("DOM", ""),
+    "plan": ("PLAN", "plans"),
+    "handoff": ("HO", "handoffs"),
+    "log": ("LOG", "log"),
 }
 
 BODIES = {
@@ -220,7 +235,7 @@ class Doc:
 
 def _is_generated(path, root):
     rel = path.relative_to(root).as_posix()
-    return path.name == "INDEX.md" or rel == "10-architecture/graph.md"
+    return path.name == "INDEX.md" or rel == GRAPH_PATH
 
 
 def load_docs(root):
@@ -310,7 +325,8 @@ def _quote(value):
 
 
 def cmd_new(args):
-    prefix, folder = KINDS[args.kind]
+    prefix, sub = KINDS[args.kind]
+    folder = f"{PREFIX_DIR[prefix]}/{sub}" if sub else PREFIX_DIR[prefix]
     title = args.title.strip()
     if not title or "\n" in title:
         raise DocsError("title must be a non-empty single line")
@@ -398,8 +414,8 @@ def lint(root):
     for d in docs:
         if len(d.text.splitlines()) > MAX_DOC_LINES:
             warnings.append(f"{d.rel}: longer than {MAX_DOC_LINES} lines")
-        if not d.error and d.get("status") == "superseded" and d.rel.split("/")[0] != "90-archive":
-            warnings.append(f"{d.rel}: status is superseded but file is outside 90-archive")
+        if not d.error and d.get("status") == "superseded" and d.rel.split("/")[0] != ARCHIVE_DIR:
+            warnings.append(f"{d.rel}: status is superseded but file is outside {ARCHIVE_DIR}")
     for p in sorted(Path(root).rglob("INDEX.md")):
         if len(p.read_text(encoding="utf-8").splitlines()) > MAX_INDEX_LINES:
             warnings.append(f"{p.relative_to(root).as_posix()}: longer than {MAX_INDEX_LINES} lines")
@@ -463,8 +479,8 @@ def cmd_index(args):
         sec_docs = [d for d in docs if d.rel.startswith(sec + "/")]
         emit(root / sec / "INDEX.md", _table(sec_docs, sec), f"# {sec}")
     for area in sorted({d.rel.split("/")[1] for d in docs
-                        if d.rel.startswith("30-domains/") and d.rel.count("/") >= 2}):
-        base = f"30-domains/{area}"
+                        if d.rel.startswith(DOMAINS_DIR + "/") and d.rel.count("/") >= 2}):
+        base = f"{DOMAINS_DIR}/{area}"
         emit(root / base / "INDEX.md",
              _table([d for d in docs if d.rel.startswith(base + "/")], base), f"# {area}")
 
@@ -509,7 +525,7 @@ def build_graph(docs):
 
 def cmd_graph(args):
     root = Path(args.root)
-    target = root / "10-architecture" / "graph.md"
+    target = root / GRAPH_PATH
     changed = write_marked(target, build_graph(load_docs(root)), "# Dependency graph")
     print(f"{'updated' if changed else 'unchanged'} {target}")
     return 0
