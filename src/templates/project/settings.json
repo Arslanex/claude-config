@@ -1,0 +1,7 @@
+{
+  "sandbox": {
+    "filesystem": {
+      "denyRead": ["./.env.production", "./.env.prod", "./.env.staging", "./secrets"]
+    }
+  }
+}

@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "tui": "fullscreen",
+  "model": "sonnet",
+  "attribution": {
+    "commit": "",
+    "pr": "",
+    "sessionUrl": false
+  },
+  "permissions": {
+    "allow": [
+      "Bash(git status)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(ls)",
+      "Bash(ls *)",
+      "Bash(pwd)",
+      "Bash(gh auth status)",
+      "Bash(gh repo view *)",
+      "Bash(gh pr list *)",
+      "Bash(gh pr view *)",
+      "Bash(gh pr diff *)",
+      "Bash(gh pr checks *)",
+      "Bash(gh pr status)",
+      "Bash(gh issue list *)",
+      "Bash(gh issue view *)",
+      "Bash(gh run list *)",
+      "Bash(gh run view *)",
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_take_screenshot",
+      "mcp__playwright__browser_console_messages",
+      "mcp__playwright__browser_network_requests",
+      "mcp__playwright__browser_network_request",
+      "mcp__playwright__browser_find",
+      "mcp__playwright__browser_wait_for",
+      "mcp__cloudflare-api__docs",
+      "mcp__cloudflare-api__search",
+      "mcp__cloudflare-api__whoami",
+      "mcp__playwright__browser_evaluate",
+      "mcp__playwright__browser_file_upload",
+      "mcp__playwright__browser_fill_form",
+      "mcp__playwright__browser_type",
+      "mcp__playwright__browser_press_key",
+      "mcp__playwright__browser_drop",
+      "Bash(gh pr create *)",
+      "Bash(gh pr comment *)",
+      "Bash(gh pr review *)",
+      "Bash(gh issue create *)",
+      "Bash(gh issue comment *)",
+      "WebSearch",
+      "WebFetch"
+    ],
+    "deny": [
+      "Read(**/.env)",
+      "Read(**/.env.*)",
+      "Read(~/.ssh/**)",
+      "Read(~/.aws/**)",
+      "Read(~/.pypirc)",
+      "Bash(gh repo delete *)",
+      "Bash(gh auth token *)",
+      "Bash(gh auth logout *)",
+      "Bash(gh secret *)",
+      "Bash(gh api -X DELETE *)",
+      "Bash(gh api --method DELETE *)",
+      "mcp__playwright__browser_run_code_unsafe",
+      "Edit(~/.claude/settings.json)",
+      "Edit(~/.claude/hooks/**)",
+      "Edit(~/.claude.json)"
+    ],
+    "ask": [
+      "Bash(gh pr merge *)",
+      "Bash(gh repo create *)",
+      "mcp__cloudflare-api__execute"
+    ]
+  },
+  "autoCompactWindow": 400000,
+  "disableClaudeAiConnectors": true,
+  "sandbox": {
+    "enabled": true,
+    "failIfUnavailable": true,
+    "allowUnsandboxedCommands": false,
+    "filesystem": {
+      "denyRead": [
+        "~/.ssh",
+        "~/.aws",
+        "~/.gnupg",
+        "~/.pypirc",
+        "~/.netrc"
+      ]
+    },
+    "network": {
+      "allowedDomains": [
+        "github.com",
+        "api.github.com",
+        "registry.npmjs.org",
+        "pypi.org",
+        "files.pythonhosted.org",
+        "crates.io",
+        "static.crates.io",
+        "proxy.golang.org",
+        "rubygems.org",
+        "*.githubusercontent.com"
+      ]
+    },
+    "enableWeakerNetworkIsolation": true
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$HOME/.claude/hooks/guard.py\""
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$HOME/.claude/hooks/notify.py\""
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$HOME/.claude/hooks/notify.py\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$HOME/.claude/hooks/notify.py\""
+          }
+        ]
+      }
+    ]
+  }
+}
