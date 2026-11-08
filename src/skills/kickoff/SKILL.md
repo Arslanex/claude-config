@@ -1,6 +1,7 @@
 ---
 name: kickoff
 description: Interview the user about a new project, then fill CLAUDE.md placeholders and create the first ADR, module and domain docs. Invoke manually with /kickoff.
+disable-model-invocation: true
 ---
 
 Bootstrap a new project's base docs through a short interview.
