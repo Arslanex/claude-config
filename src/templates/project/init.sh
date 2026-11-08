@@ -60,7 +60,7 @@ if [ -n "$KIND" ]; then
       subst "$rel.proposed"
       echo "conflict: $rel exists; wrote $rel.proposed"
     fi
-  done < <(find "$P" -type f ! -name '.DS_Store' -print0 | sort -z)
+  done < <(find "$P" -type f ! -name '.DS_Store' ! -name 'gitignore.lines' -print0 | sort -z)
   echo "$KIND" > .claude/profile
 fi
 [ -e .claude/settings.json ] || cp "$T/settings.json" .claude/settings.json
@@ -87,8 +87,13 @@ touch .gitignore
 if [ -s .gitignore ] && [ -n "$(tail -c 1 .gitignore)" ]; then
   echo >> .gitignore
 fi
-for l in ".claude/settings.local.json" ".claude/session-state.md" "CLAUDE.local.md" ".obsidian/"; do
+for l in ".claude/settings.local.json" ".claude/session-state.md" "CLAUDE.local.md" ".obsidian/" ".env" ".env.*"; do
   grep -qxF "$l" .gitignore || echo "$l" >> .gitignore
 done
+if [ -n "$KIND" ] && [ -f "$T/../profiles/$KIND/gitignore.lines" ]; then
+  while IFS= read -r l; do
+    if [ -n "$l" ] && ! grep -qxF "$l" .gitignore; then echo "$l" >> .gitignore; fi
+  done < "$T/../profiles/$KIND/gitignore.lines"
+fi
 echo "Claude project config ready in $(pwd):"
 ls -A .claude CLAUDE.md Makefile .gitignore tools docs
