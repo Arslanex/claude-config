@@ -76,6 +76,14 @@ class TestInit(InitTestCase):
             self.assertEqual(lines.count(l), 1, l)
         self.assertIn("node_modules/", lines)
 
+    def test_gitignore_without_trailing_newline_keeps_lines_separate(self):
+        (self.proj / ".gitignore").write_text("node_modules")
+        self.init()
+        self.init()
+        lines = (self.proj / ".gitignore").read_text().splitlines()
+        self.assertEqual(lines, ["node_modules", ".claude/settings.local.json",
+                                 "CLAUDE.local.md", ".obsidian/"])
+
     def test_existing_user_files_are_not_overwritten(self):
         (self.proj / "CLAUDE.md").write_text("mine\n")
         (self.proj / "docs/00-project").mkdir(parents=True)
@@ -93,6 +101,17 @@ class TestInit(InitTestCase):
                            capture_output=True, text=True)
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertIn("0 error(s)", r.stdout)
+
+    def test_readme_in_area_is_skipped_by_lint(self):
+        self.init()
+        readme = self.proj / "docs/02-decisions/README.md"
+        self.assertTrue(readme.exists())
+        self.assertFalse(readme.read_text().startswith("---"))
+        r = subprocess.run(["python3", "tools/docs.py", "lint"], cwd=self.proj,
+                           capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("0 error(s)", r.stdout)
+        self.assertNotIn("README.md", r.stdout)
 
 
 class TestUpgrade(InitTestCase):

@@ -234,6 +234,8 @@ class Doc:
 
 
 def _is_generated(path, root):
+    # INDEX.md and graph.md are generated; README.md files are plain guides without
+    # front matter, so none of them are treated as documents (not linted, not indexed).
     rel = path.relative_to(root).as_posix()
     return path.name in ("INDEX.md", "README.md") or rel == GRAPH_PATH
 

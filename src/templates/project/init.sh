@@ -54,6 +54,10 @@ if [ -d "$T/docs" ]; then
 fi
 
 touch .gitignore
+# Make sure the last line is terminated so appended entries do not get glued to it.
+if [ -s .gitignore ] && [ -n "$(tail -c 1 .gitignore)" ]; then
+  echo >> .gitignore
+fi
 for l in ".claude/settings.local.json" "CLAUDE.local.md" ".obsidian/"; do
   grep -qxF "$l" .gitignore || echo "$l" >> .gitignore
 done
