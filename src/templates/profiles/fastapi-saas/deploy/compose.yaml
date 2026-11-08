@@ -1,3 +1,4 @@
+name: __PKG__
 # Taban: servis tanimlari. Ortama ozgu deger overlay dosyalarinda (development/test/production).
 services:
   postgres:
