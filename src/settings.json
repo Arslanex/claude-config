@@ -119,6 +119,10 @@
           {
             "type": "command",
             "command": "python3 \"$HOME/.claude/hooks/guard.py\""
+          },
+          {
+            "type": "command",
+            "command": "python3 \"$HOME/.claude/hooks/dep-guard.py\""
           }
         ]
       },
