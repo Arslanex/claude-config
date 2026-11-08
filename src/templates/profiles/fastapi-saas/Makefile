@@ -1,4 +1,5 @@
 BACKEND ?= backend
+TEST_DATABASE_URL ?= postgresql+asyncpg://test:test@localhost:55463/test
 .PHONY: help check lint typecheck arch test-unit test-integration test-e2e test-smoke migrate migrate-check openapi docs-lint stack-test-up stack-test-down
 help:
 	@echo 'Targets: check lint typecheck arch test-unit test-integration test-e2e test-smoke migrate migrate-check openapi docs-lint stack-test-up stack-test-down'
@@ -20,7 +21,7 @@ test-smoke:
 migrate:
 	cd $(BACKEND) && uv run alembic upgrade head
 migrate-check:
-	cd $(BACKEND) && uv run alembic check
+	cd $(BACKEND) && DATABASE_URL=$(TEST_DATABASE_URL) uv run alembic upgrade head && DATABASE_URL=$(TEST_DATABASE_URL) uv run alembic check
 openapi:
 	@echo 'openapi: uygulama yolu tanimli degil (profilde doldur)'; exit 1
 docs-lint:
