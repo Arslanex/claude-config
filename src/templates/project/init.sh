@@ -5,9 +5,11 @@ T="$HOME/.claude/templates/project"
 mkdir -p .claude
 [ -e .claude/settings.json ] || cp "$T/settings.json" .claude/settings.json
 [ -e CLAUDE.md ] || cp "$T/CLAUDE.md" CLAUDE.md
+mkdir -p tools
+[ -e tools/docs.py ] || cp "$T/tools/docs.py" tools/docs.py
 touch .gitignore
 for l in ".claude/settings.local.json" "CLAUDE.local.md"; do
   grep -qxF "$l" .gitignore || echo "$l" >> .gitignore
 done
 echo "Claude project config ready in $(pwd):"
-ls -A .claude CLAUDE.md .gitignore
+ls -A .claude CLAUDE.md .gitignore tools

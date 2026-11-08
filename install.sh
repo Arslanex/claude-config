@@ -45,7 +45,7 @@ while IFS= read -r -d '' file; do
     cp -pf "$file" "$DEST/$rel"
     echo "installed $rel"
   fi
-done < <(find "$SRC" -type f ! -name '.DS_Store' -print0 | sort -z)
+done < <(find "$SRC" -type f ! -name '.DS_Store' ! -path '*/__pycache__/*' -print0 | sort -z)
 
 if [ "$DRY_RUN" -eq 1 ]; then
   echo "[dry-run] chmod   555 $DEST/hooks/*"
