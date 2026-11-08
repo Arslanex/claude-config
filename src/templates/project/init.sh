@@ -39,6 +39,9 @@ fi
 mkdir -p .claude
 [ -e .claude/settings.json ] || cp "$T/settings.json" .claude/settings.json
 [ -e CLAUDE.md ] || cp "$T/CLAUDE.md" CLAUDE.md
+[ -e Makefile ] || cp "$T/Makefile" Makefile
+mkdir -p .claude/rules
+touch .claude/rules/.gitkeep
 mkdir -p tools
 [ -e tools/docs.py ] || cp "$T/tools/docs.py" tools/docs.py
 
@@ -58,8 +61,8 @@ touch .gitignore
 if [ -s .gitignore ] && [ -n "$(tail -c 1 .gitignore)" ]; then
   echo >> .gitignore
 fi
-for l in ".claude/settings.local.json" "CLAUDE.local.md" ".obsidian/"; do
+for l in ".claude/settings.local.json" ".claude/session-state.md" "CLAUDE.local.md" ".obsidian/"; do
   grep -qxF "$l" .gitignore || echo "$l" >> .gitignore
 done
 echo "Claude project config ready in $(pwd):"
-ls -A .claude CLAUDE.md .gitignore tools docs
+ls -A .claude CLAUDE.md Makefile .gitignore tools docs

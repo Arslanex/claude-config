@@ -5,7 +5,8 @@
 ## Commands
 - Install: `<cmd>`
 - Dev: `<cmd>`
-- Test: `<cmd>` (run before declaring any task done)
+- Verify: `make check` (run before declaring any task done)
+- Test: `<cmd>`
 - Lint/format: `<cmd>`
 - Build: `<cmd>`
 
@@ -19,8 +20,7 @@
 - <Naming, error handling, testing style specific to this project.>
 
 ## Definition of done
-- Tests pass and lint is clean.
-- `python3 tools/docs.py lint` passes.
+- `make check` passes (lint, test, docs-lint).
 - Work is committed on a feature branch with a conventional commit message.
 - No secrets, no unrelated refactors.
 
