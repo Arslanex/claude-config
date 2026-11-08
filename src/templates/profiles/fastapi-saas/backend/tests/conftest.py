@@ -1,4 +1,5 @@
 """Marker'lar dizinden otomatik atanir: unit, integration, e2e, smoke."""
+
 from pathlib import Path
 
 import pytest

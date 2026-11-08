@@ -51,15 +51,21 @@ if [ -n "$KIND" ]; then
   [ -d "$P" ] || { echo "unknown profile: $KIND" >&2; exit 1; }
   while IFS= read -r -d '' f; do
     rel="${f#"$P"/}"
-    if [ ! -e "$rel" ]; then
-      mkdir -p "$(dirname "$rel")"
-      cp -p "$f" "$rel"
-      subst "$rel"
-    elif ! cmp -s "$f" "$rel"; then
-      cp "$f" "$rel.proposed"
-      subst "$rel.proposed"
-      echo "conflict: $rel exists; wrote $rel.proposed"
+    dst="$rel"
+    [ -n "$PKG" ] && dst="${rel//__PKG__/$PKG}"
+    tmp="$(mktemp)"
+    cp "$f" "$tmp"
+    subst "$tmp"
+    if [ ! -e "$dst" ]; then
+      mkdir -p "$(dirname "$dst")"
+      cp -p "$f" "$dst"
+      subst "$dst"
+    elif ! cmp -s "$tmp" "$dst"; then
+      cp "$f" "$dst.proposed"
+      subst "$dst.proposed"
+      echo "conflict: $dst exists; wrote $dst.proposed"
     fi
+    rm -f "$tmp"
   done < <(find "$P" -type f ! -name '.DS_Store' ! -name 'gitignore.lines' -print0 | sort -z)
   echo "$KIND" > .claude/profile
 fi

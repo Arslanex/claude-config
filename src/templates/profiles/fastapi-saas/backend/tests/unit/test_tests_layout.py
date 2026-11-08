@@ -17,7 +17,10 @@ def test_no_test_files_outside_groups():
 
 def test_group_files_are_named_test():
     bad = [
-        p for g in GROUPS for p in (TESTS / g).rglob("*.py")
-        if p.name not in ("__init__.py", "conftest.py") and not p.name.startswith("test_")
+        p
+        for g in GROUPS
+        for p in (TESTS / g).rglob("*.py")
+        if p.name not in ("__init__.py", "conftest.py")
+        and not p.name.startswith("test_")
     ]
     assert not bad, f"test_ ile baslamayan dosya: {bad}"
