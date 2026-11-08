@@ -10,6 +10,8 @@ try:
     d = json.load(sys.stdin)
 except Exception:
     sys.exit(0)
+if not isinstance(d, dict):
+    sys.exit(0)
 
 event = d.get("hook_event_name", "")
 project = os.path.basename((d.get("cwd") or "").rstrip("/")) or "?"
