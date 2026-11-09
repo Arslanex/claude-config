@@ -1,4 +1,5 @@
 import os
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -37,6 +38,28 @@ class TestInstallDryRun(unittest.TestCase):
     def test_unknown_flag_fails(self):
         r = subprocess.run(["bash", str(INSTALL), "--bogus"], capture_output=True, text=True)
         self.assertEqual(r.returncode, 1)
+
+
+class TestInstallExcludes(unittest.TestCase):
+    def test_cache_directories_are_not_installed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "repo"
+            cache = root / "src" / "templates" / "profiles" / "p" / ".cache" / "uv"
+            cache.mkdir(parents=True)
+            (cache / ".lock").write_text("x")
+            (cache / "sdists-v10").mkdir()
+            (cache / "sdists-v10" / ".git").write_text("x")
+            (root / "src" / "keep.txt").write_text("keep")
+            shutil.copy(INSTALL, root / "install.sh")
+            home = Path(tmp) / "home"
+            home.mkdir()
+
+            r = subprocess.run(["bash", str(root / "install.sh")], capture_output=True, text=True,
+                               env={"HOME": str(home), "PATH": os.environ["PATH"]}, timeout=30)
+
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertTrue((home / ".claude" / "keep.txt").exists())
+            self.assertFalse((home / ".claude" / "templates" / "profiles" / "p" / ".cache").exists())
 
 
 def run_install(home, *args):
