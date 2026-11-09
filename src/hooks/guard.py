@@ -30,11 +30,11 @@ PROTECTED = {"main", "master", "production", "prod"}
 
 
 def block(kind, why):
-    print(
-        f"BLOCKED [{kind}]: {why}. Do not retry or work around this. "
-        "Stop and ask the user for explicit approval.",
-        file=sys.stderr,
-    )
+    if kind == "docker":
+        tail = "Run the same command through tools/dockerw, which refuses unsafe flags and paths outside the project."
+    else:
+        tail = "Do not retry or work around this. Stop and ask the user for explicit approval."
+    print(f"BLOCKED [{kind}]: {why}. {tail}", file=sys.stderr)
     sys.exit(2)
 
 
@@ -59,6 +59,8 @@ CMD_RULES = [
      r"(?:(?:npm|pnpm|yarn|bun)\s+publish|twine\s+upload|cargo\s+publish|docker\s+push)\b"),
     ("money", "stripe CLI can touch real payments",
      r"stripe(?=\s|$)(?!\s+(?:listen|logs|--version|version|help|login)\b)"),
+    ("docker", "raw docker is not allowed for agents",
+     r"docker(?:-compose)?\b"),
 ]
 
 # Rules matched anywhere in the arguments of any command that is not a data

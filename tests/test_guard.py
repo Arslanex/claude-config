@@ -122,7 +122,7 @@ class TestAllowed(GuardTestCase):
             "aws sts get-caller-identity",
             "gcloud compute instances list",
             "terraform plan",
-            "docker ps",
+            "tools/dockerw ps",
         ]
         for cmd in cases:
             with self.subTest(cmd=cmd):
@@ -209,7 +209,7 @@ class TestCommandPosition(GuardTestCase):
     def test_unanchored_security_rules_still_strict(self):
         cases = [
             "ssh host 'git push --force origin x'",
-            "docker exec db psql -c 'DROP TABLE users'",
+            "kubectl exec db psql -c 'DROP TABLE users'",
             "bash -c 'rm -rf ~'",
             "xargs rm -rf /",
         ]
