@@ -144,11 +144,20 @@ class TestClean(Base):
         self.assertEqual(self.calls().strip(),
                          f"container prune -f --filter label=com.docker.compose.project={self.name}")
 
-    def test_include_dangling_adds_only_dangling_image_prune(self):
-        self.run_tool("clean", "--apply", "--include-dangling")
+    def test_include_dangling_is_not_supported(self):
+        r = self.run_tool("clean", "--apply", "--include-dangling")
+        self.assertEqual(r.returncode, 2, r.stderr)
+        self.assertIn("not supported: unlabelled images are never pruned", r.stderr)
+        self.assertEqual(self.calls().strip(), "", "docker was called")
+
+    def test_clean_never_prunes_images_or_anything_unlabelled(self):
+        for argv in (["clean"], ["clean", "--apply"], ["clean", "--include-dangling"],
+                     ["clean", "--apply", "--include-dangling"]):
+            self.run_tool(*argv)
         lines = self.calls().strip().splitlines()
-        self.assertEqual(lines[-1], "image prune -f")
-        for bad in ("-a", "--all", "volume", "system", "builder"):
+        for line in lines:
+            self.assertIn(f"label=com.docker.compose.project={self.name}", line)
+        for bad in ("image", "-a", "--all", "volume", "system", "builder", "network"):
             self.assertFalse(any(bad in l.split() for l in lines), bad)
 
     def test_unknown_flag_refused(self):

@@ -7,6 +7,7 @@ project name so later cleanup can be scoped to this project's labels. Destructiv
 available here.
 """
 import csv
+import errno
 import hashlib
 import json
 import os
@@ -22,6 +23,7 @@ COMPOSE_SUBS = {"up", "down", "build", "ps", "logs", "config", "pull", "restart"
 COMPOSE_VALUE_OPTS = {"-f", "--file", "-p", "--project-name", "--profile", "--env-file",
                       "--project-directory", "--ansi", "--progress", "--parallel"}
 COMPOSE_PATH_OPTS = {"-f", "--file", "--env-file", "--project-directory"}
+SUB_PATH_OPTS = {"--env-from-file"}  # subcommand flags whose value is a host path read by docker
 DENY_FLAGS = {"--privileged", "--cap-add", "--security-opt", "--device", "--pid", "--ipc", "--userns",
               "--cgroup-parent", "--uts", "-H", "--host", "--context"}
 
@@ -39,10 +41,18 @@ SAFE_PATH = "/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/Applications/Docker
 def _conf():
     """Settings come from a file next to this script (not writable by the sandbox), never from env vars."""
     try:
-        data = json.loads(CONF.read_text())
-        return data if isinstance(data, dict) else {}
-    except (OSError, ValueError):
+        text = CONF.read_text()
+    except FileNotFoundError:
         return {}
+    except OSError as exc:
+        raise SystemExit(f"dockerw: cannot read {CONF}: {exc}")
+    try:
+        data = json.loads(text)
+    except ValueError as exc:
+        raise SystemExit(f"dockerw: {CONF} is not valid JSON ({exc}); refusing to run without its settings")
+    if not isinstance(data, dict):
+        raise SystemExit(f"dockerw: {CONF} must hold a JSON object; refusing to run without its settings")
+    return data
 
 
 def _docker():
@@ -110,12 +120,55 @@ def _resolve(path, cwd):
     return (p if p.is_absolute() else Path(cwd) / p).resolve()
 
 
-def _host_path_reason(src, root, cwd):
+PROTECTED_DIRS = (".git", ".claude")
+RO_HINT = "use :ro or a subdirectory"
+
+
+def _protected_reason(src, root, cwd):
+    """Why a read-write bind mount of src is refused: the sandbox denies the agent these paths, a container must not reopen them."""
+    p = _resolve(src, cwd)
+    try:
+        rel = p.relative_to(Path(root).resolve())
+    except ValueError:
+        return None
+    for part in rel.parts:
+        if part in PROTECTED_DIRS:
+            return f"read-write mount of {src} is inside {part}; {RO_HINT}"
+        if part == "secrets" or part == ".env" or part.startswith(".env."):
+            return f"read-write mount of {src} exposes {part}; {RO_HINT}"
+    if not rel.parts:
+        return f"read-write mount of {src} covers .git or .claude; {RO_HINT}"
+    return _covers_protected(p, src)
+
+
+SCAN_DEPTH, SCAN_ENTRIES = 4, 5000
+
+
+def _covers_protected(p, src):
+    """Refuse when .git/.claude lies up to SCAN_DEPTH levels below p, or when that cannot be established cheaply."""
+    errors, seen = [], 0
+    for dirpath, dirnames, filenames in os.walk(p, onerror=errors.append):
+        seen += len(dirnames) + len(filenames)
+        if seen > SCAN_ENTRIES:
+            return f"read-write mount of {src} is too large to scan for .git/.claude (over {SCAN_ENTRIES} entries); {RO_HINT}"
+        if any(n in PROTECTED_DIRS for n in (*dirnames, *filenames)):
+            return f"read-write mount of {src} covers .git or .claude below it; {RO_HINT}"
+        if len(Path(dirpath).relative_to(p).parts) >= SCAN_DEPTH - 1:
+            dirnames[:] = []
+    errors = [e for e in errors if e.errno not in (errno.ENOENT, errno.ENOTDIR)]  # missing or a plain file: nothing below it
+    if errors:
+        return f"read-write mount of {src} cannot be scanned for .git/.claude ({errors[0].strerror}); {RO_HINT}"
+    return None
+
+
+def _host_path_reason(src, root, cwd, ro=False):
     if not src:
         return None
     is_host_path = src.startswith(("/", "~", ".")) or "/" in src
     if is_host_path:
-        return None if inside(src, root, cwd) else f"mount source outside the project: {src}"
+        if not inside(src, root, cwd):
+            return f"mount source outside the project: {src}"
+        return None if ro else _protected_reason(src, root, cwd)
     prefix = project_name(root) + "_"
     if not src.startswith(prefix):
         return f"named volume must belong to this project (start with {prefix}): {src}"
@@ -123,12 +176,15 @@ def _host_path_reason(src, root, cwd):
 
 
 def _volume_reason(spec, root, cwd):
-    return _host_path_reason(spec.split(":")[0], root, cwd)
+    parts = spec.split(":")
+    opts = parts[2].split(",") if len(parts) >= 3 else []
+    ro = "rw" not in opts and ("ro" in opts or "readonly" in opts)
+    return _host_path_reason(parts[0], root, cwd, ro)
 
 
 def _mount_reason(spec, root, cwd):
-    # Like docker: keys are case-insensitive, type is lower-cased, and the last of source/src wins.
-    typ, src = "volume", ""
+    # Like docker: keys are case-insensitive, type is lower-cased, and the last of source/src (and readonly/ro) wins.
+    typ, src, ro = "volume", "", False
     try:
         if "\n" in spec or "\r" in spec:
             raise csv.Error("newline in value")
@@ -140,19 +196,21 @@ def _mount_reason(spec, root, cwd):
         return f"unparseable --mount value ({e}): {spec!r}"
     for kv in fields:
         key, eq, value = kv.partition("=")
-        if not eq:
-            continue
         key = key.strip().lower()
-        if key == "type":
+        if key in ("readonly", "ro"):
+            ro = not eq or value.strip().lower() in ("1", "t", "true")
+        elif not eq:
+            continue
+        elif key == "type":
             typ = value.strip().lower()
         elif key in ("source", "src"):
             src = value
     if typ == "bind":
         if not src:
             return "bind mount without a source"
-        return _host_path_reason(src, root, cwd)
+        return _host_path_reason(src, root, cwd, ro)
     if typ == "volume" and src:
-        return _host_path_reason(src, root, cwd)
+        return _host_path_reason(src, root, cwd, ro)
     return None
 
 
@@ -180,6 +238,19 @@ def scan(tokens, root, cwd):
             raise Refused(reason)
 
 
+def _tag_ok(tag, root):
+    """Built images must live in the project's namespace (<project>-... or <project>/...), never a shared name."""
+    name = project_name(root)
+    return str(tag).startswith((name + "-", name + "/"))
+
+
+def _tag_reason(tag, root):
+    if _tag_ok(tag, root):
+        return None
+    name = project_name(root)
+    return f"image tag {tag!r} may re-tag a shared image; start it with {name}- or {name}/"
+
+
 BUILD_VALUE_FLAGS = {"-t", "--tag", "-f", "--file", "--build-arg", "--target", "--label", "--progress", "--platform"}
 BUILD_BOOL_FLAGS = {"--no-cache", "--pull", "-q", "--quiet"}
 
@@ -205,6 +276,10 @@ def _build(rest, root, cwd):
                 i += 1
             if name in ("-f", "--file") and not inside(val, root, cwd):
                 raise Refused(f"Dockerfile outside the project: {val}")
+            if name in ("-t", "--tag"):
+                reason = _tag_reason(val, root)
+                if reason:
+                    raise Refused(reason)
             i += 1
             continue
         raise Refused(f"build option not allowed: {tok}")
@@ -225,18 +300,21 @@ def _compose(args, root, cwd):
             sub = tok
             break
         opt, eq, val = tok.partition("=")
-        if opt in COMPOSE_VALUE_OPTS:
-            if not eq:
-                if i + 1 >= len(args):
-                    raise Refused(f"{opt} needs a value")
-                val = args[i + 1]
-                i += 1
-            if opt in COMPOSE_PATH_OPTS and not inside(val, root, cwd):
-                raise Refused(f"{opt} points outside the project: {val}")
-            if opt in ("-p", "--project-name"):
-                if val != name:
-                    raise Refused(f"project name is pinned to '{name}'")
-                has_project = True
+        if opt not in COMPOSE_VALUE_OPTS:
+            raise Refused(f"compose option {opt} is not supported before the subcommand")
+        if not eq:
+            if i + 1 >= len(args):
+                raise Refused(f"{opt} needs a value")
+            val = args[i + 1]
+            i += 1
+        if opt in ("-f", "--file") and (val == "-" or "://" in val or val.startswith("git@")):
+            raise Refused(f"{opt} must be a local file; stdin and remote compose files are not allowed: {val}")
+        if opt in COMPOSE_PATH_OPTS and not inside(val, root, cwd):
+            raise Refused(f"{opt} points outside the project: {val}")
+        if opt in ("-p", "--project-name"):
+            if val != name:
+                raise Refused(f"project name is pinned to '{name}'")
+            has_project = True
         i += 1
     if sub is None or sub not in COMPOSE_SUBS:
         raise Refused(f"compose subcommand not allowed: {sub or '(none)'}")
@@ -246,13 +324,25 @@ def _compose(args, root, cwd):
         if (opt in ("--file", "--env-file", "--project-directory", "--project-name")
                 or (opt == "-f" and sub != "logs") or (opt == "-p" and sub != "run")):
             raise Refused(f"{opt} must come before the compose subcommand")
+    for j, t in enumerate(after):
+        opt, eq, val = t.partition("=")
+        if opt in SUB_PATH_OPTS:
+            if not eq:
+                if j + 1 >= len(after):
+                    raise Refused(f"{opt} needs a value")
+                val = after[j + 1]
+            if not inside(val, root, cwd):
+                raise Refused(f"{opt} points outside the project: {val}")
     if sub == "down" and any(t in ("-v", "--volumes", "--rmi") or t.startswith(("--rmi=", "--volumes="))
                              for t in after):
         raise Refused("down with volumes or images removes data; ask the user or use the labelled cleanup")
     if sub == "build":
         for t in after:
-            if t.partition("=")[0] in ("--ssh", "--push"):
-                raise Refused(f"{t.partition('=')[0]} is not allowed: build must not use the SSH agent or push images")
+            if t.partition("=")[0] in ("--ssh", "--push", "--builder"):
+                raise Refused(f"{t.partition('=')[0]} is not allowed: build must not use the SSH agent, push images or pick a builder")
+    for t in args:
+        if t.partition("=")[0] == "--output" or (t.startswith("-o") and not t.startswith("--")):
+            raise Refused("-o/--output writes a file on the host and is not allowed")
     scan(args, root, cwd)
     return ["compose", *([] if has_project else ["-p", name]), *args]
 
@@ -292,8 +382,8 @@ def _run(args, cwd=None):
     return subprocess.run([_docker(), *args], capture_output=True, text=True, cwd=cwd, env=_env())
 
 
-def is_free(port):
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+def is_free(port, proto="tcp"):
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM if proto == "udp" else socket.SOCK_STREAM)
     try:
         s.bind(("0.0.0.0", port))
         return True
@@ -305,22 +395,29 @@ def is_free(port):
 
 def published_ports(config):
     """Sorted, de-duplicated (service, host port) pairs that a compose config publishes."""
+    return sorted({(svc, port) for svc, port, _ in published_ports_proto(config)}, key=lambda t: (t[1], t[0]))
+
+
+def published_ports_proto(config):
+    """Sorted, de-duplicated (service, host port, protocol) triples that a compose config publishes."""
     out = set()
     for svc, spec in (config.get("services") or {}).items():
         for p in (spec or {}).get("ports") or []:
             if isinstance(p, dict) and p.get("published"):
                 try:
-                    out.add((svc, int(p["published"])))
+                    out.add((svc, int(p["published"]), "udp" if str(p.get("protocol")).lower() == "udp" else "tcp"))
                 except (TypeError, ValueError):
                     continue
-    return sorted(out, key=lambda t: (t[1], t[0]))
+    return sorted(out, key=lambda t: (t[1], t[2], t[0]))
 
 
-def port_status(port, name):
-    if is_free(port):
+def port_status(port, name, proto="tcp"):
+    if (is_free(port) if proto == "tcp" else is_free(port, proto)):
         return "free"
     r = _run(["ps", "--filter", f"publish={port}", "--format", '{{.Names}}|{{.Label "com.docker.compose.project"}}'])
-    rows = [l.strip().split("|", 1) for l in r.stdout.splitlines() if l.strip()] if r.returncode == 0 else []
+    if r.returncode != 0:
+        return "unknown"
+    rows = [l.strip().split("|", 1) for l in r.stdout.splitlines() if l.strip()]
     if any(len(row) == 2 and row[1] == name for row in rows):
         return "own"
     return "other-container" if rows else "foreign-process"
@@ -344,13 +441,13 @@ def cmd_ports(args):
     except ValueError as exc:
         print(f"dockerw: could not read the compose config: {exc}", file=sys.stderr)
         return 1
-    ports = published_ports(config)
-    taken = {p for _, p in ports}
-    for svc, port in ports:
-        status = port_status(port, name)
-        line = f"PORT {port} {svc} {status}"
+    ports = published_ports_proto(config)
+    taken = {p for _, p, _ in ports}
+    for svc, port, proto in ports:
+        status = port_status(port, name, proto)
+        line = f"PORT {port}{'/udp' if proto == 'udp' else ''} {svc} {status}"
         if status in ("other-container", "foreign-process"):
-            s = suggest_port(port, taken)
+            s = suggest_port(port, taken)  # TCP probe; the suggestion is only a hint
             line += f" suggest={s}" if s else " suggest=none"
             if s:
                 taken.add(s)
@@ -361,29 +458,26 @@ def cmd_ports(args):
 
 
 def cmd_clean(args):
-    if any(a not in ("--apply", "--include-dangling") for a in args):
-        print("dockerw: clean accepts only --apply and --include-dangling", file=sys.stderr)
+    if "--include-dangling" in args:
+        print("dockerw: clean --include-dangling is not supported: unlabelled images are never pruned", file=sys.stderr)
+        return 2
+    if any(a != "--apply" for a in args):
+        print("dockerw: clean accepts only --apply", file=sys.stderr)
         return 2
     apply = "--apply" in args
     name = project_name(project_root())
-    steps = [(f"stopped containers of project {name}",
-              ["container", "prune", "-f", "--filter", f"label=com.docker.compose.project={name}"])]
-    if "--include-dangling" in args:
-        steps.append(("dangling images (unreferenced, not project-labelled)", ["image", "prune", "-f"]))
-    rc = 0
-    for label, cmd in steps:
-        if not apply:
-            print(f"would run: {label}")
-            continue
-        r = _run(cmd)
-        if r.returncode == 0:
-            print(f"{label}: ok")
-        else:
-            rc = 1
-            print(f"{label}: failed: {r.stderr.strip()[:200]}")
+    label = f"stopped containers of project {name}"
+    cmd = ["container", "prune", "-f", "--filter", f"label=com.docker.compose.project={name}"]
     if not apply:
+        print(f"would run: {label}")
         print("dry run: nothing removed (use --apply)")
-    return rc
+        return 0
+    r = _run(cmd)
+    if r.returncode == 0:
+        print(f"{label}: ok")
+        return 0
+    print(f"{label}: failed: {r.stderr.strip()[:200]}")
+    return 1
 
 
 GATED = {"up", "run", "build", "start", "restart", "down"}
@@ -506,8 +600,25 @@ def validate_config(cfg, root, cwd):
                 src = str(v.get("source") or "")
                 if not src or "docker.sock" in src or not inside(src, root, cwd):
                     raise Refused(f"{where}: bind mount source outside the project: {src or '(empty)'}")
+                reason = None if v.get("read_only") else _protected_reason(src, root, cwd)
+                if reason:
+                    raise Refused(f"{where}: {reason}")
+        for hook in ("pre_start", "post_start", "pre_stop"):
+            for entry in spec.get(hook) or []:
+                if isinstance(entry, dict) and entry.get("privileged"):
+                    raise Refused(f"{where}: {hook} hook with privileged is not allowed")
+        for watch in (spec.get("develop") or {}).get("watch") or []:
+            wpath = str((watch or {}).get("path") or "")
+            if not wpath or not inside(wpath, root, cwd):
+                raise Refused(f"{where}: develop.watch path outside the project: {wpath or '(empty)'}")
         if isinstance(spec.get("build"), dict):
             _validate_build(where, spec["build"], root, cwd)
+            tags = [spec["image"]] if spec.get("image") else []
+            tags += [str(t) for t in spec["build"].get("tags") or []]
+            for tag in tags:
+                if not _tag_ok(tag, root):
+                    raise Refused(f"{where}: image {tag} would re-tag a shared image; drop image: or start it with "
+                                  f"{prefix[:-1]}- or {prefix[:-1]}/")
     for key, vol in (cfg.get("volumes") or {}).items():
         vol = vol or {}
         vname = str(vol.get("name") or key)
@@ -515,7 +626,10 @@ def validate_config(cfg, root, cwd):
             raise Refused(f"volume {key}: name must be exactly {prefix}{key} (got {vname})")
         if (vol.get("driver") or "local") != "local":
             raise Refused(f"volume {key}: only the local driver is allowed")
-        device = (vol.get("driver_opts") or {}).get("device")
+        opts = vol.get("driver_opts") or {}
+        if str(opts.get("type") or "none") not in ("none", "tmpfs") or "addr=" in str(opts.get("o") or ""):
+            raise Refused(f"volume {key}: driver_opts type/o would mount a network or foreign filesystem")
+        device = opts.get("device")
         if device and not inside(str(device), root, cwd):
             raise Refused(f"volume {key}: device outside the project: {device}")
     for key, net in (cfg.get("networks") or {}).items():
@@ -531,6 +645,14 @@ def validate_config(cfg, root, cwd):
                 raise Refused(f"{kind} {key}: reading a host environment variable is not allowed")
 
 
+def pin_bind_sources(cfg, cwd):
+    """Replace bind sources by the real path that was validated, so a symlink swapped in later is not followed."""
+    for spec in (cfg.get("services") or {}).values():
+        for v in (spec or {}).get("volumes") or []:
+            if isinstance(v, dict) and v.get("type") == "bind" and v.get("source"):
+                v["source"] = str(_resolve(str(v["source"]), cwd))
+
+
 def gate_compose(final, root, cwd):
     """Return (reason, argv, stdin). Commands that start containers run the validated config from stdin."""
     opts, sub, rest = _split_compose(final[1:])
@@ -542,11 +664,12 @@ def gate_compose(final, root, cwd):
         validate_env_files(unresolved, root, cwd)
         before = env_file_identity(unresolved, cwd)
         cfg = _config(["compose", *everything, "config", "--format", "json"], cwd)
-        validate_env_files(unresolved, root, cwd)
+        validate_env_files(cfg, root, cwd)
         if env_file_identity(unresolved, cwd) != before:
             raise Refused("an env_file changed while the compose config was being resolved")
         if sub in GATED:
             validate_config(cfg, root, cwd)
+            pin_bind_sources(cfg, cwd)
     except Refused as exc:
         return str(exc), None, None
     keep = _flat([(tok, val) for tok, val in opts if tok.partition("=")[0] in KEEP_OPTS])

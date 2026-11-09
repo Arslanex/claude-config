@@ -38,12 +38,12 @@ class Base(unittest.TestCase):
 
 class TestBuildParsing(Base):
     def test_context_is_the_only_positional_wherever_the_flags_are(self):
-        self.allowed("build", ".", "-t", "x")
-        self.allowed("build", "-t", "x", ".")
-        self.refused("build", "/etc", "-t", "x")
-        self.refused("build", "-t", "x", "/etc")
+        self.allowed("build", ".", "-t", f"{self.name}-x")
+        self.allowed("build", "-t", f"{self.name}-x", ".")
+        self.refused("build", "/etc", "-t", f"{self.name}-x")
+        self.refused("build", "-t", f"{self.name}-x", "/etc")
         self.refused("build", ".", "..")
-        self.refused("build", "-t", "x")
+        self.refused("build", "-t", f"{self.name}-x")
 
     def test_only_listed_flags_are_accepted(self):
         for extra in (["--output", "type=local,dest=/tmp/x"], ["-o", "/tmp/x"],
@@ -56,7 +56,7 @@ class TestBuildParsing(Base):
 
     def test_listed_flags_work(self):
         self.allowed("build", "--no-cache", "--pull", "-q", "--target", "dev", "--label", "a=b",
-                     "--progress=plain", "--platform", "linux/amd64", "-t", "x", ".")
+                     "--progress=plain", "--platform", "linux/amd64", "-t", f"{self.name}-x", ".")
 
 
 class TestShortOptions(Base):

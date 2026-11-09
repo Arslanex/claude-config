@@ -53,7 +53,7 @@ class TestVerbs(Base):
     def test_read_only_and_build_commands_allowed(self):
         for argv in (["ps"], ["images"], ["version"],
                      ["info"], ["system", "df"], ["build", "."], ["build", "-f", "Dockerfile", "."],
-                     ["build", "-t", "x", "--build-arg", "A=1", "."]):
+                     ["build", "-t", f"{self.mod.project_name(self.root)}-x", "--build-arg", "A=1", "."]):
             with self.subTest(argv=argv):
                 self.allowed(*argv)
 
