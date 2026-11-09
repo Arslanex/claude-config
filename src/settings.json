@@ -109,7 +109,10 @@
         "*.githubusercontent.com"
       ]
     },
-    "enableWeakerNetworkIsolation": true
+    "enableWeakerNetworkIsolation": true,
+    "excludedCommands": [
+      "dockerw *"
+    ]
   },
   "hooks": {
     "PreToolUse": [
