@@ -76,6 +76,8 @@ mkdir -p .claude/rules
 touch .claude/rules/.gitkeep
 mkdir -p tools
 [ -e tools/docs.py ] || cp "$T/tools/docs.py" tools/docs.py
+mkdir -p tools/git-hooks
+[ -e tools/git-hooks/pre-push ] || { cp "$T/tools/git-hooks/pre-push" tools/git-hooks/pre-push; chmod +x tools/git-hooks/pre-push; }
 
 # Docs skeleton: copy only files that do not exist yet.
 if [ -d "$T/docs" ]; then
@@ -103,3 +105,4 @@ if [ -n "$KIND" ] && [ -f "$T/../profiles/$KIND/gitignore.lines" ]; then
 fi
 echo "Claude project config ready in $(pwd):"
 ls -A .claude CLAUDE.md Makefile .gitignore tools docs
+echo "Enable the pre-push gate (runs make check before every push): make hooks"

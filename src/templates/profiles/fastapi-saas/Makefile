@@ -1,9 +1,9 @@
 BACKEND ?= backend
 TEST_DATABASE_URL ?= postgresql+asyncpg://test:test@localhost:55463/test
 export UV_CACHE_DIR ?= $(CURDIR)/.cache/uv
-.PHONY: help check lint typecheck arch test-unit test-integration test-e2e test-smoke migrate migrate-check openapi docs-lint stack-test-up stack-test-down
+.PHONY: help check lint typecheck arch test-unit test-integration test-e2e test-smoke migrate migrate-check openapi docs-lint stack-test-up stack-test-down hooks
 help:
-	@echo 'Targets: check lint typecheck arch test-unit test-integration test-e2e test-smoke migrate migrate-check openapi docs-lint stack-test-up stack-test-down'
+	@echo 'Targets: check lint typecheck arch test-unit test-integration test-e2e test-smoke migrate migrate-check openapi docs-lint stack-test-up stack-test-down hooks'
 check: lint typecheck arch test-unit docs-lint
 lint:
 	cd $(BACKEND) && uv run ruff check . && uv run ruff format --check .
@@ -31,3 +31,8 @@ stack-test-up:
 	docker compose -f deploy/compose.yaml -f deploy/compose.test.yaml up -d --wait postgres redis
 stack-test-down:
 	docker compose -f deploy/compose.yaml -f deploy/compose.test.yaml down -v
+
+.PHONY: hooks
+hooks:
+	git config core.hooksPath tools/git-hooks
+	@echo "pre-push gate active (core.hooksPath = tools/git-hooks)"
