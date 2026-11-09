@@ -3,6 +3,7 @@
 set -euo pipefail
 R="$(cd "$(dirname "$0")/.." && pwd)"
 h=$(mktemp -d); d=$(mktemp -d); trap 'rm -rf "$h" "$d"' EXIT
+[ -d "$h" ] && [ -d "$d" ] || { echo "mktemp failed" >&2; exit 1; }
 mkdir -p "$h/.claude/templates"
 cp -R "$R/src/templates/project" "$h/.claude/templates/project"
 cp -R "$R/src/templates/profiles" "$h/.claude/templates/profiles"

@@ -1,0 +1,17 @@
+diff --git a/app/features/customers/service.py b/app/features/customers/service.py
+index 51be0a2..a44c1d0 100644
+--- a/app/features/customers/service.py
++++ b/app/features/customers/service.py
+@@ -12,6 +12,13 @@ class CustomerService:
+     def __init__(self, repo):
+         self._repo = repo
+
++    async def rename(self, customer_id: UUID, name: str) -> CustomerRead:
++        customer = await self._repo.get(customer_id)
++        customer.name = name
++        await self._repo.save(customer)
++        return CustomerRead.model_validate(customer)
++
+     async def get_customer(self, customer_id: UUID) -> CustomerRead:
+         customer = await self._repo.get(customer_id)
+         return CustomerRead.model_validate(customer)

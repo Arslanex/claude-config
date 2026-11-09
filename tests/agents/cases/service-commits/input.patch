@@ -1,0 +1,14 @@
+diff --git a/app/features/invoices/service.py b/app/features/invoices/service.py
+index 3f1a2b4..9c7d8e1 100644
+--- a/app/features/invoices/service.py
++++ b/app/features/invoices/service.py
+@@ -18,9 +18,10 @@ class InvoiceService:
+         self._repo = repo
+         self._session = session
+
+     async def mark_paid(self, invoice_id: UUID) -> InvoiceRead:
+         invoice = await self._repo.get(invoice_id)
+         invoice.status = "paid"
+         await self._repo.save(invoice)
++        await self._session.commit()
+         return InvoiceRead.model_validate(invoice)

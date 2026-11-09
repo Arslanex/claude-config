@@ -1,0 +1,14 @@
+diff --git a/migrations/versions/0007_create_notes.sql b/migrations/versions/0007_create_notes.sql
+new file mode 100644
+index 0000000..b2c4e6a
+--- /dev/null
++++ b/migrations/versions/0007_create_notes.sql
+@@ -0,0 +1,8 @@
++CREATE TABLE notes (
++    id uuid PRIMARY KEY,
++    tenant_id uuid NOT NULL,
++    body text NOT NULL,
++    created_at timestamptz NOT NULL DEFAULT now()
++);
++
++CREATE INDEX notes_tenant_id_idx ON notes (tenant_id);

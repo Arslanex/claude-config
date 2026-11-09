@@ -1,0 +1,6 @@
+{
+  "agent": "arch-reviewer",
+  "expect": ["ORM-LEAK"],
+  "forbid": ["SERVICE-COMMITS"],
+  "clean": false
+}

@@ -1,0 +1,20 @@
+diff --git a/app/features/customers/service.py b/app/features/customers/service.py
+index 51be0a2..e83c4d9 100644
+--- a/app/features/customers/service.py
++++ b/app/features/customers/service.py
+@@ -1,5 +1,6 @@
+ from uuid import UUID
+
++from app.infra.database.models import Customer
+ from app.features.customers.schemas import CustomerRead
+
+
+@@ -12,6 +13,5 @@ class CustomerService:
+     def __init__(self, repo):
+         self._repo = repo
+
+-    async def get_customer(self, customer_id: UUID) -> CustomerRead:
+-        customer = await self._repo.get(customer_id)
+-        return CustomerRead.model_validate(customer)
++    async def get_customer(self, customer_id: UUID) -> Customer:
++        return await self._repo.get(customer_id)

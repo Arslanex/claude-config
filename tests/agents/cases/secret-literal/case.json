@@ -1,0 +1,6 @@
+{
+  "agent": "security-reviewer",
+  "expect": ["SECRET-LITERAL"],
+  "forbid": ["RLS-MISSING"],
+  "clean": false
+}

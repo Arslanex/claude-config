@@ -1,0 +1,6 @@
+{
+  "agent": "security-reviewer",
+  "expect": ["RLS-MISSING"],
+  "forbid": ["DEFINER-SEARCH-PATH"],
+  "clean": false
+}

@@ -2,6 +2,7 @@
 # Sandbox secret-okuma korumasını ölçer. Gerçek secret kullanmaz, geçici dizinde çalışır.
 set -euo pipefail
 d=$(mktemp -d); trap 'rm -rf "$d"' EXIT
+[ -d "$d" ] || { echo "mktemp failed" >&2; exit 1; }
 cd "$d"; git init -q
 echo NORMAL=ok > notes.txt
 for f in .env .env.local config.env server.pem api.key credentials.json; do echo SBXSECRET > "$f"; done

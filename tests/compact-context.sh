@@ -3,9 +3,10 @@
 set -uo pipefail
 H="$(cd "$(dirname "$0")/.." && pwd)/src/hooks/compact-context.py"
 T="$(mktemp -d)"; trap 'rm -rf "$T"' EXIT
+[ -n "$T" ] && [ -d "$T" ] || { echo "mktemp failed" >&2; exit 1; }
 fail=0
 chk() { if eval "$2"; then echo "ok   $1"; else echo "FAIL $1"; fail=1; fi; }
-cd "$T" && git init -q -b main . && mkdir -p docs/05-work/{handoffs,tasks,plans,log}
+cd "$T" || exit 1; git init -q -b main . && mkdir -p docs/05-work/{handoffs,tasks,plans,log}
 echo idx > docs/INDEX.md
 echo "OLD-HANDOFF" > docs/05-work/handoffs/eski.md && touch -t 202001010000 docs/05-work/handoffs/eski.md
 echo "HANDOFF-SENTINEL kaldigim yer" > docs/05-work/handoffs/yeni.md

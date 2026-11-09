@@ -1,0 +1,14 @@
+diff --git a/migrations/versions/0008_tenant_name_fn.sql b/migrations/versions/0008_tenant_name_fn.sql
+new file mode 100644
+index 0000000..7d1f0c3
+--- /dev/null
++++ b/migrations/versions/0008_tenant_name_fn.sql
+@@ -0,0 +1,8 @@
++CREATE FUNCTION app_private.tenant_name(p_tenant_id uuid)
++RETURNS text
++LANGUAGE sql
++SECURITY DEFINER
++SET search_path = pg_catalog, public
++AS $$
++    SELECT name FROM tenants WHERE id = p_tenant_id
++$$;

@@ -1,0 +1,28 @@
+diff --git a/migrations/versions/0009_create_tasks.sql b/migrations/versions/0009_create_tasks.sql
+new file mode 100644
+index 0000000..e4a9b12
+--- /dev/null
++++ b/migrations/versions/0009_create_tasks.sql
+@@ -0,0 +1,22 @@
++CREATE TABLE tasks (
++    id uuid PRIMARY KEY,
++    tenant_id uuid NOT NULL,
++    title text NOT NULL
++);
++
++ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
++ALTER TABLE tasks FORCE ROW LEVEL SECURITY;
++
++CREATE POLICY tasks_tenant_isolation ON tasks
++    USING (tenant_id = current_setting('app.tenant_id')::uuid);
++
++GRANT SELECT, INSERT, UPDATE, DELETE ON tasks TO app_rw;
++
++CREATE FUNCTION app_private.task_count()
++RETURNS bigint
++LANGUAGE sql
++SECURITY DEFINER
++SET search_path = pg_catalog, pg_temp
++AS $$
++    SELECT count(*) FROM public.tasks
++$$;

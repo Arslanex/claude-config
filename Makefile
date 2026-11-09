@@ -11,7 +11,7 @@ help:
 
 # A failing test file never stops the others; failures are collected and listed at the end.
 test:
-	@failed=""; \
+	@guard_before="$$( (git rev-parse HEAD; git status --porcelain) 2>/dev/null )"; failed=""; \
 	for f in $(PY_TESTS); do \
 		echo "==> unittest: $$f"; \
 		python3 -m unittest discover -s tests -p "$$f" -v || failed="$$failed tests/$$f"; \
@@ -20,6 +20,10 @@ test:
 		echo "==> script: $$f"; \
 		bash "$$f" || failed="$$failed $$f"; \
 	done; \
+	guard_after="$$( (git rev-parse HEAD; git status --porcelain) 2>/dev/null )"; \
+	if [ "$$guard_before" != "$$guard_after" ]; then \
+		echo ""; echo "FAILED: tests changed the repository (HEAD or working tree)"; failed="$$failed <repo-mutation>"; \
+	fi; \
 	if [ -n "$$failed" ]; then \
 		echo ""; \
 		echo "FAILED:"; \
@@ -30,3 +34,7 @@ test:
 	echo "All test files passed."
 
 check: test
+
+.PHONY: agent-eval
+agent-eval:
+	python3 tests/agents/run.py
