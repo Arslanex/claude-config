@@ -7,6 +7,8 @@ help:
 	@echo "Targets:"
 	@echo "  test   run every tests/test_*.py (unittest) and tests/*.sh; run all, report failures at the end"
 	@echo "  check  currently the same as test (lint will be added later)"
+	@echo "  agent-eval  run the agent regression harness (calls claude, costs tokens)"
+	@echo "  live-test   tests that need a live claude and network (not part of check)"
 	@echo "  help   show this help"
 
 # A failing test file never stops the others; failures are collected and listed at the end.
@@ -38,3 +40,7 @@ check: test
 .PHONY: agent-eval
 agent-eval:
 	python3 tests/agents/run.py
+
+.PHONY: live-test
+live-test:
+	bash tests/live/sandbox-secrets.sh
