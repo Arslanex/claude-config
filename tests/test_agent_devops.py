@@ -57,11 +57,33 @@ class DevopsAgentTest(unittest.TestCase):
                     self.assertIn(parts[1], known)
 
     def test_compose_validation_and_env_example_rules(self):
-        self.assertIn("`dockerw compose --env-file .env.example -f compose.yaml config`", BODY)
+        self.assertIn("`dockerw compose --env-file deploy/env.example -f deploy/compose.yaml config`", BODY)
+        self.assertIn("`dockerw ports -f deploy/compose.yaml --env-file deploy/env.example`", BODY)
         self.assertRegex(BODY, r"(?i)options before the subcommand")
         self.assertRegex(BODY, r"(?i)non-empty placeholder for every variable the compose files require")
         self.assertIn("without a real `.env`", BODY)
-        self.assertIn("Never create or read `.env`", BODY)
+
+    def test_placeholder_env_file_is_deploy_env_example_and_dot_env_is_never_touched(self):
+        self.assertNotIn(".env.example", BODY)
+        self.assertIn("deploy/env.example", BODY)
+        self.assertRegex(BODY, r"Never create, read or write any `\.env\*` file")
+        self.assertRegex(BODY, r"(?i)the user copies `\.env` from `deploy/env\.example` themselves")
+        self.assertIn("`deploy/`, `tools/`, CI templates", BODY)
+        self.assertNotRegex(BODY, r"`deploy/`, `tools/`, CI templates, ")
+
+    def test_built_image_naming_has_no_hash(self):
+        self.assertIn("image: <dirname>-<service>[:<tag>]", BODY)
+        self.assertRegex(BODY, r"(?i)dirname = the sanitised name of the project directory")
+        self.assertRegex(BODY, r"(?i)no hash")
+        self.assertIn("${APP_TAG}", BODY)
+        self.assertNotIn("project = the name `dockerw compose config` reports", BODY)
+
+    def test_secret_variables_have_no_default_in_compose_files(self):
+        self.assertIn("${VAR:?}", BODY)
+        self.assertIn("`${VAR:-value}` is forbidden", BODY)
+        self.assertRegex(BODY, r"(?i)password, token, key or secret")
+        self.assertIn("CHANGE_ME", BODY)
+        self.assertRegex(BODY, r"(?i)placeholders live only in `deploy/env\.example`")
 
     def test_dockerw_output_is_never_piped(self):
         self.assertRegex(BODY, r"Never pipe or chain dockerw output \(no `\| head`, no `\| grep`\)")
@@ -78,7 +100,7 @@ class DevopsAgentTest(unittest.TestCase):
 
     def test_dockerw_refusals_are_stated_and_final(self):
         for text in ("`.git`", "`.claude`", "`.env*`", "`secrets`", "`:ro`", "privileged", "`down -v`", "`--rmi`",
-                     "`build --ssh`", "`--push`", "<project>-", "<project>/", "`-f -`", "oci://", "`config -o/--output`"):
+                     "`build --ssh`", "`--push`", "<dirname>-", "<dirname>/", "`-f -`", "oci://", "`config -o/--output`"):
             self.assertIn(text, BODY)
         self.assertIn("A refusal is final", BODY)
         self.assertRegex(BODY, r"(?i)do not rewrite the command")
@@ -96,7 +118,7 @@ class DevopsAgentTest(unittest.TestCase):
         self.assertRegex(BODY, r"(?i)never decide these yourself")
 
     def test_template_rules(self):
-        for text in ("node_modules", ".venv", "named volumes", "image: <project>-<service>", ".env.example",
+        for text in ("node_modules", ".venv", "named volumes", "image: <dirname>-<service>", "deploy/env.example",
                      "healthcheck", "127.0.0.1", "Rollback notes"):
             self.assertIn(text, BODY)
         self.assertRegex(BODY, r"(?i)secret values are never written")

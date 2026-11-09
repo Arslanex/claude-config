@@ -128,6 +128,52 @@ class TestPorts(Base):
         self.assertEqual(self.run_tool("ports").stdout.strip(), "PORTS none")
 
 
+class TestPortsOptions(Base):
+    """ports takes the same compose file options as 'compose' (-f repeatable, one --env-file), nothing else."""
+
+    def setUp(self):
+        super().setUp()
+        (self.fake_dir / "config.json").write_text(json.dumps({"services": {"web": {}}}))
+
+    def calls(self):
+        return self.log.read_text() if self.log.exists() else ""
+
+    def refused(self, *argv):
+        r = self.run_tool("ports", *argv)
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+        self.assertIn("refused", r.stderr)
+        self.assertNotIn("config", self.calls())
+
+    def test_options_are_passed_to_the_config_call(self):
+        r = self.run_tool("ports", "-f", "deploy/compose.yaml", "--file=deploy/prod.yaml", "--env-file", "deploy/env.example")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(r.stdout.strip(), "PORTS none")
+        self.assertIn(f"compose -p {self.name} -f deploy/compose.yaml --file=deploy/prod.yaml "
+                      f"--env-file deploy/env.example config --format json", self.calls())
+
+    def test_no_options_is_unchanged(self):
+        self.assertEqual(self.run_tool("ports").returncode, 0)
+        self.assertIn(f"compose -p {self.name} config --format json", self.calls())
+
+    def test_paths_outside_the_project_are_refused(self):
+        self.refused("-f", "/etc/compose.yaml")
+        self.refused("--file=../x.yaml")
+        self.refused("--env-file", "/etc/passwd")
+        self.refused("--env-file=../env")
+
+    def test_stdin_and_remote_compose_files_are_refused(self):
+        for val in ("-", "https://example.com/c.yaml", "oci://example.com/c", "git@host:r.git"):
+            self.refused("-f", val)
+
+    def test_only_one_env_file(self):
+        self.refused("--env-file", "a.env", "--env-file", "b.env")
+
+    def test_unknown_flags_and_positionals_are_refused(self):
+        for argv in (["--profile", "x"], ["-p", "other"], ["--project-directory", "."], ["--dry-run"],
+                     ["extra"], ["-f"], ["--env-file"]):
+            self.refused(*argv)
+
+
 class TestClean(Base):
     def calls(self):
         return self.log.read_text() if self.log.exists() else ""

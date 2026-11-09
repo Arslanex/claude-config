@@ -101,10 +101,14 @@ def root_reason(root):
     return None
 
 
+def project_base(root):
+    """Sanitised directory name without the hash; built image tags start with it."""
+    return re.sub(r"[^a-z0-9_-]", "", Path(root).name.lower()).lstrip("-_") or "project"
+
+
 def project_name(root):
-    """Sanitised basename plus a short hash of the full path, so same-named directories get different projects."""
-    base = re.sub(r"[^a-z0-9_-]", "", Path(root).name.lower()).lstrip("-_") or "project"
-    return f"{base}-{hashlib.sha256(str(Path(root).resolve()).encode()).hexdigest()[:8]}"
+    """project_base plus a short hash of the full path, so same-named directories get different projects."""
+    return f"{project_base(root)}-{hashlib.sha256(str(Path(root).resolve()).encode()).hexdigest()[:8]}"
 
 
 def inside(path, root, cwd):
@@ -239,16 +243,16 @@ def scan(tokens, root, cwd):
 
 
 def _tag_ok(tag, root):
-    """Built images must live in the project's namespace (<project>-... or <project>/...), never a shared name."""
-    name = project_name(root)
-    return str(tag).startswith((name + "-", name + "/"))
+    """Built images must live in the project's namespace (<base>-... or <base>/...), never a shared name."""
+    base = project_base(root)
+    return str(tag).startswith((base + "-", base + "/"))
 
 
 def _tag_reason(tag, root):
     if _tag_ok(tag, root):
         return None
-    name = project_name(root)
-    return f"image tag {tag!r} may re-tag a shared image; start it with {name}- or {name}/"
+    base = project_base(root)
+    return f"image tag {tag!r} may re-tag a shared image; start it with {base}- or {base}/"
 
 
 BUILD_VALUE_FLAGS = {"-t", "--tag", "-f", "--file", "--build-arg", "--target", "--label", "--progress", "--platform"}
@@ -291,6 +295,38 @@ def _build(rest, root, cwd):
     return ["build", *rest]
 
 
+def _check_path_opt(opt, val, root, cwd):
+    if opt in ("-f", "--file") and (val == "-" or "://" in val or val.startswith("git@")):
+        raise Refused(f"{opt} must be a local file; stdin and remote compose files are not allowed: {val}")
+    if opt in COMPOSE_PATH_OPTS and not inside(val, root, cwd):
+        raise Refused(f"{opt} points outside the project: {val}")
+
+
+def _ports_opts(args, root, cwd):
+    """Validate the compose file options of 'ports': -f/--file (repeatable) and at most one --env-file."""
+    out, env_files, i = [], 0, 0
+    while i < len(args):
+        tok = args[i]
+        opt, eq, val = tok.partition("=")
+        if opt not in ("-f", "--file", "--env-file"):
+            raise Refused(f"ports accepts only -f/--file and --env-file, not {tok}")
+        if not eq:
+            if i + 1 >= len(args):
+                raise Refused(f"{opt} needs a value")
+            val = args[i + 1]
+            i += 1
+        _check_path_opt(opt, val, root, cwd)
+        if opt == "--env-file":
+            env_files += 1
+            if env_files > 1:
+                raise Refused("ports accepts at most one --env-file")
+        out.append(tok if eq else opt)
+        if not eq:
+            out.append(val)
+        i += 1
+    return out
+
+
 def _compose(args, root, cwd):
     name = project_name(root)
     has_project, sub, i = False, None, 0
@@ -307,10 +343,7 @@ def _compose(args, root, cwd):
                 raise Refused(f"{opt} needs a value")
             val = args[i + 1]
             i += 1
-        if opt in ("-f", "--file") and (val == "-" or "://" in val or val.startswith("git@")):
-            raise Refused(f"{opt} must be a local file; stdin and remote compose files are not allowed: {val}")
-        if opt in COMPOSE_PATH_OPTS and not inside(val, root, cwd):
-            raise Refused(f"{opt} points outside the project: {val}")
+        _check_path_opt(opt, val, root, cwd)
         if opt in ("-p", "--project-name"):
             if val != name:
                 raise Refused(f"project name is pinned to '{name}'")
@@ -433,7 +466,12 @@ def suggest_port(port, taken):
 def cmd_ports(args):
     root = project_root()
     name = project_name(root)
-    r = _run(["compose", "-p", name, "config", "--format", "json"], cwd=root)
+    try:
+        opts = _ports_opts(args, root, Path.cwd())
+    except Refused as exc:
+        print(f"dockerw: refused: {exc}", file=sys.stderr)
+        return 2
+    r = _run(["compose", "-p", name, *opts, "config", "--format", "json"], cwd=root)
     try:
         if r.returncode != 0:
             raise ValueError("docker compose config failed")
@@ -618,7 +656,7 @@ def validate_config(cfg, root, cwd):
             for tag in tags:
                 if not _tag_ok(tag, root):
                     raise Refused(f"{where}: image {tag} would re-tag a shared image; drop image: or start it with "
-                                  f"{prefix[:-1]}- or {prefix[:-1]}/")
+                                  f"{project_base(root)}- or {project_base(root)}/")
     for key, vol in (cfg.get("volumes") or {}).items():
         vol = vol or {}
         vname = str(vol.get("name") or key)

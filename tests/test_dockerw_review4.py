@@ -98,6 +98,10 @@ class TestComposeFlagEscapes(RevBase):
 
 
 class TestValidateConfigGaps(RevBase):
+    @property
+    def base(self):
+        return self.name.rsplit("-", 1)[0]
+
     def refused(self, cfg):
         with self.assertRaises(self.mod.Refused, msg=json.dumps(cfg)):
             self.mod.validate_config(cfg, self.root, self.root)
@@ -120,12 +124,12 @@ class TestValidateConfigGaps(RevBase):
 
     def test_built_image_cannot_take_over_another_projects_tag(self):
         # build.tag/image: postgres:16 re-tags a shared image that other projects pull or run.
-        for image in ("postgres:16", "postgres", "x", "docker.io/library/postgres", f"{self.name}x", "other-" + self.name):
+        for image in ("postgres:16", "postgres", "x", "docker.io/library/postgres", "other-" + self.name):
             self.refused({"services": {"db": {"image": image, "build": {"context": str(self.root)}}}})
         self.refused({"services": {"db": {"build": {"context": str(self.root), "tags": ["postgres:16"]}}}})
 
     def test_built_service_tags_with_the_project_prefix_are_allowed(self):
-        for image in (f"{self.name}-db", f"{self.name}-db:dev", f"{self.name}/db", f"{self.name}/db:1"):
+        for image in (f"{self.base}-db", f"{self.base}-db:dev", f"{self.base}/db", f"{self.name}-db", f"{self.name}/db:1"):
             self.mod.validate_config({"services": {"db": {"image": image, "build": {"context": str(self.root)}}}},
                                      self.root, self.root)
         self.mod.validate_config({"services": {"db": {"build": {"context": str(self.root)}}}}, self.root, self.root)
@@ -134,14 +138,14 @@ class TestValidateConfigGaps(RevBase):
         self.mod.validate_config({"services": {"db": {"image": "postgres:16"}}}, self.root, self.root)
 
     def test_build_tag_flag_cannot_take_over_a_shared_tag(self):
-        for tag in ("postgres:16", "postgres", "x", "myapp", "docker.io/library/postgres", f"{self.name}x",
-                    "other-" + self.name):
+        for tag in ("postgres:16", "postgres", "x", "myapp", "docker.io/library/postgres", self.base,
+                    "other-" + self.base):
             for flag in (["-t", tag], [f"--tag={tag}"], ["--tag", tag]):
                 reason, _ = self.check("build", *flag, ".")
                 self.assertIsNotNone(reason, f"{flag} was allowed")
 
     def test_build_tags_with_the_project_prefix_are_allowed(self):
-        for tag in (f"{self.name}-app", f"{self.name}-app:dev", f"{self.name}/app", f"{self.name}/app:1"):
+        for tag in (f"{self.base}-x", f"{self.base}/x", f"{self.name}-x", f"{self.name}-app:dev", f"{self.base}-app:1"):
             reason, _ = self.check("build", "-t", tag, ".")
             self.assertIsNone(reason, reason)
 
