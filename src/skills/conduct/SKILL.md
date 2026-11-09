@@ -29,7 +29,7 @@ Record the size and why in the task file. If unsure, start one size smaller; the
 | Counter-case against an ADR, plan or finished work | `devils-advocate` |
 | Diff against ARCH-0001/0002 | `arch-reviewer` |
 | Auth, secrets, dependencies, network, migrations, grants | `security-reviewer` |
-| Repo state, lock, tests, hooks before a push | `work-verifier` |
+| Repo state, lock, tests, hooks before a push (claude-config repo) | `work-verifier` |
 | Where is X / unfamiliar codebase | `file-explorer` / `structure-explorer` |
 `mlops` is dormant: no agent exists, do not route to it. Roles with disjoint write paths run in parallel in one message.
 
