@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Sandbox secret-okuma korumasını ölçer. Gerçek secret kullanmaz, geçici dizinde çalışır.
 set -euo pipefail
-d=$(mktemp -d); trap 'rm -rf "$d"' EXIT
+d=$(mktemp -d "${TMPDIR:-/tmp}/cc.XXXXXX"); trap 'rm -rf "$d"' EXIT
 [ -d "$d" ] || { echo "mktemp failed" >&2; exit 1; }
 cd "$d"; git init -q
 echo NORMAL=ok > notes.txt

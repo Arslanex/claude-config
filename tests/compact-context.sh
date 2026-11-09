@@ -2,7 +2,7 @@
 # compact-context hook'unu gecici bir proje uzerinde dener (claude gerekmez).
 set -uo pipefail
 H="$(cd "$(dirname "$0")/.." && pwd)/src/hooks/compact-context.py"
-T="$(mktemp -d)"; trap 'rm -rf "$T"' EXIT
+T="$(mktemp -d "${TMPDIR:-/tmp}/cc.XXXXXX")"; trap 'rm -rf "$T"' EXIT
 [ -n "$T" ] && [ -d "$T" ] || { echo "mktemp failed" >&2; exit 1; }
 fail=0
 chk() { if eval "$2"; then echo "ok   $1"; else echo "FAIL $1"; fail=1; fi; }

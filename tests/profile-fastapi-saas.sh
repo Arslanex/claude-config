@@ -2,7 +2,7 @@
 # fastapi-saas profilini bos bir projede gercek araclarla dener (uv gerekir).
 set -euo pipefail
 R="$(cd "$(dirname "$0")/.." && pwd)"
-h=$(mktemp -d); d=$(mktemp -d); trap 'rm -rf "$h" "$d"' EXIT
+h=$(mktemp -d "${TMPDIR:-/tmp}/cc.XXXXXX"); d=$(mktemp -d "${TMPDIR:-/tmp}/cc.XXXXXX"); trap 'rm -rf "$h" "$d"' EXIT
 [ -d "$h" ] && [ -d "$d" ] || { echo "mktemp failed" >&2; exit 1; }
 mkdir -p "$h/.claude/templates"
 cp -R "$R/src/templates/project" "$h/.claude/templates/project"

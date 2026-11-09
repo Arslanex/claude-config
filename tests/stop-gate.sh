@@ -2,7 +2,7 @@
 # stop-gate hook'unu sentetik girdiyle dener (claude gerekmez).
 set -uo pipefail
 H="$(cd "$(dirname "$0")/.." && pwd)/src/hooks/stop-gate.py"
-t=$(mktemp -d); trap 'rm -rf "$t"' EXIT
+t=$(mktemp -d "${TMPDIR:-/tmp}/cc.XXXXXX"); trap 'rm -rf "$t"' EXIT
 [ -d "$t" ] || { echo "mktemp failed" >&2; exit 1; }
 fail=0
 mk() { # ad, check tarifi, kirli(0/1)
