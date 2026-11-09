@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Project knowledge base engine: new / lint / index / graph for docs/.
+"""Project knowledge base engine: new / lint / index / graph / stale for docs/.
 
 Python 3 stdlib only, no network. Run `docs.py --help` for usage.
 """
@@ -10,7 +10,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-DOCS_ENGINE_VERSION = 2
+DOCS_ENGINE_VERSION = 3
 
 REQUIRED = ("id", "title", "status", "area", "updated")
 STATUSES = ("draft", "accepted", "superseded", "archived")
@@ -534,6 +534,40 @@ def cmd_graph(args):
 
 
 # --------------------------------------------------------------------------
+# stale
+# --------------------------------------------------------------------------
+
+STALE_STATUSES = ("draft", "accepted")
+
+
+def cmd_stale(args):
+    if args.today:
+        if not _valid_date(args.today):
+            raise DocsError(f"--today must be a YYYY-MM-DD date, got {args.today!r}")
+        today = datetime.date.fromisoformat(args.today)
+    else:
+        today = datetime.date.today()
+    checked = stale = 0
+    for d in load_docs(args.root):
+        if d.error:
+            print(f"WARN  {d.rel}: {d.error}")
+            continue
+        if d.get("status") not in STALE_STATUSES:
+            continue
+        checked += 1
+        updated = d.get("updated")
+        if not _valid_date(updated):
+            print(f"WARN  {d.rel}: missing or invalid 'updated' date {updated!r}")
+            continue
+        age = (today - datetime.date.fromisoformat(updated)).days
+        if age > args.days:
+            stale += 1
+            print(f"STALE {d.id} {d.get('status')} {updated} {age}d {d.rel}")
+    print(f"{stale} stale of {checked} checked")
+    return 0
+
+
+# --------------------------------------------------------------------------
 # CLI
 # --------------------------------------------------------------------------
 
@@ -556,6 +590,10 @@ def build_parser():
     p.set_defaults(func=cmd_lint)
     add("index", help="regenerate INDEX.md files").set_defaults(func=cmd_index)
     add("graph", help="regenerate the Mermaid dependency graph").set_defaults(func=cmd_graph)
+    p = add("stale", help="list draft/accepted docs not updated for N days (report only)")
+    p.add_argument("--days", type=int, default=90, help="age threshold in days (default: 90)")
+    p.add_argument("--today", help="reference date YYYY-MM-DD (default: real today)")
+    p.set_defaults(func=cmd_stale)
     return parser
 
 

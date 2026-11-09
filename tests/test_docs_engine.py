@@ -363,5 +363,50 @@ class GraphTests(TempRoot):
         self.assertEqual(run("lint", "--root", self.root)[0], 0)
 
 
+class StaleTests(TempRoot):
+    TODAY = "2025-06-01"
+
+    def stale(self, *extra):
+        code, out, _ = run("stale", "--root", self.root, "--today", self.TODAY, *extra)
+        return code, out
+
+    def test_old_listed_new_not(self):
+        write_doc(self.root, "a.md", id="ADR-0001", updated="2025-01-01")
+        write_doc(self.root, "b.md", id="ADR-0002", status="accepted", updated="2025-05-20")
+        code, out = self.stale()
+        self.assertEqual(code, 0)
+        self.assertIn("STALE ADR-0001 draft 2025-01-01 151d a.md\n", out)
+        self.assertNotIn("ADR-0002", out)
+        self.assertEqual(out.splitlines()[-1], "1 stale of 2 checked")
+
+    def test_threshold_is_strictly_greater(self):
+        write_doc(self.root, "a.md", updated="2025-03-03")  # exactly 90 days
+        self.assertEqual(self.stale()[1], "0 stale of 1 checked\n")
+        self.assertIn("STALE", self.stale("--days", "89")[1])
+
+    def test_superseded_and_archived_excluded(self):
+        write_doc(self.root, "a.md", id="ADR-0001", status="superseded")
+        write_doc(self.root, "b.md", id="ADR-0002", status="archived")
+        write_doc(self.root, "c.md", id="ADR-0003", status="accepted")
+        code, out = self.stale()
+        self.assertEqual(code, 0)
+        self.assertNotIn("ADR-0001", out)
+        self.assertNotIn("ADR-0002", out)
+        self.assertEqual(out.splitlines()[-1], "1 stale of 1 checked")
+
+    def test_bad_or_missing_date_warns_and_exits_zero(self):
+        write_doc(self.root, "a.md", id="ADR-0001", updated="yesterday")
+        write_doc(self.root, "b.md", id="ADR-0002", updated=None)
+        code, out = self.stale()
+        self.assertEqual(code, 0)
+        self.assertIn("WARN  a.md:", out)
+        self.assertIn("WARN  b.md:", out)
+        self.assertNotIn("STALE", out)
+        self.assertEqual(out.splitlines()[-1], "0 stale of 2 checked")
+
+    def test_empty_docs(self):
+        self.assertEqual(self.stale(), (0, "0 stale of 0 checked\n"))
+
+
 if __name__ == "__main__":
     unittest.main()
