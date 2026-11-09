@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Strip Co-Authored-By and Claude-Session lines from every commit message.
+f="$1"
+grep -viE '^(co-authored-by|claude-session):' "$f" > "$f.tmp" || true
+mv "$f.tmp" "$f"
+exit 0
