@@ -1,6 +1,6 @@
 # ARCH-0003: Dosya yapısı varsayılanı
 
-Durum: Taslak
+Durum: Kabul
 
 ## Karar
 Yeni projeler için kısa varsayılan. Mevcut bir repoda onun yazılı kuralları önceliklidir. Katman yönü ARCH-0001'dedir.

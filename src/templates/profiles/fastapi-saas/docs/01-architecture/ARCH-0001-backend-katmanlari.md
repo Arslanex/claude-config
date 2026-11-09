@@ -24,7 +24,7 @@ Not: stack varsayımı onay bekliyor: FastAPI + SQLAlchemy async
 - Repo ORM modelini service'e döner, service Pydantic şema döner. Interface katmanı `infra.database.models` import edemez.
 - Katmanlar arası veri dict olarak taşınmaz; şema ya da model taşınır.
 - Id üretimi ve standardı `core` altındadır, tüm modellerde aynıdır.
-- Feature klasörü: `service.py` (OOP), `schemas.py` (Pydantic), `exceptions.py`; yardımcılar `helpers/` altında.
+- Feature klasörü: `service.py` (OOP), `schema.py` (Pydantic), `errors.py`; yardımcılar `helpers/` altında.
 
 ## Minimal ortak desenler (10)
 1. `core/events.py` + outbox relay

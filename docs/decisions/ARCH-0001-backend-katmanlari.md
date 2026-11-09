@@ -1,3 +1,4 @@
+Kısmen ARCH-0004 ile değiştirildi (yalnızca feature dosya adları)
 # ARCH-0001: Backend katman mimarisi
 
 Durum: Kabul (stack varsayımı onay bekliyor: FastAPI + SQLAlchemy async)

@@ -11,7 +11,7 @@ Zorlayan: `make arch` (import-linter) ve `tests/unit` mimari testleri. Kaynak: `
 - Repo ORM modelini service'e döner, service Pydantic şema döner. Interface `infra.database.models` import etmez.
 - Katmanlar arasında dict taşıma; şema ya da model kullan.
 - Id üretimi `core` altında, tek standart.
-- Feature klasörü: `service.py` (sınıf), `schemas.py`, `exceptions.py`, `helpers/`.
+- Feature klasörü: `service.py` (sınıf), `schema.py`, `errors.py`, `helpers/`.
 - Stateless: modül seviyesinde değişebilir nesne ve `global` yok.
 - Dağıtım modu (`tenancy`, `topology`) yalnızca ARCH-0002'de sayılan dosyalarda okunur.
 - Yeni bir desen eklemeden önce `python3 tools/docs.py new adr "<baslik>"` ile `docs/02-decisions/` altında karar yaz.
