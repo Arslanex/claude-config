@@ -1,4 +1,4 @@
-.PHONY: test check help
+.PHONY: test check help skills-verify
 
 PY_TESTS := $(notdir $(wildcard tests/test_*.py))
 SH_TESTS := $(wildcard tests/*.sh)
@@ -50,3 +50,6 @@ live-test:
 hooks:
 	git config core.hooksPath tools/git-hooks
 	@echo "pre-push gate active (core.hooksPath = tools/git-hooks)"
+
+skills-verify:
+	python3 tools/skills_lock.py verify --installed $(HOME)/.claude/skills

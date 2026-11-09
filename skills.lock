@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "skills": [
+    {"name": "docker-skills", "kind": "skill", "source": "https://github.com/docker/skills", "subpath": "skills", "status": "candidate", "notes": "official; plugin docker-skills@docker; pin a reviewed tag via branch"},
+    {"name": "postgres-skills", "kind": "skill", "source": "https://github.com/microsoft/postgres-skills", "status": "candidate", "notes": "MIT; use the 11 foundational skills only; needs postgres-mcp against dev/test DB"},
+    {"name": "react-best-practices", "kind": "skill", "source": "https://github.com/vercel-labs/agent-skills", "subpath": "skills/react-best-practices", "status": "candidate", "notes": "official Vercel; MIT"},
+    {"name": "python-testing-patterns", "kind": "skill", "source": "https://github.com/wshobson/agents", "subpath": "plugins/python-development/skills/python-testing-patterns", "status": "candidate", "notes": "community; read before approving"},
+    {"name": "trailofbits-skills", "kind": "skill", "source": "https://github.com/trailofbits/skills", "status": "candidate", "notes": "CC BY-SA 4.0: install via marketplace, do not copy; semgrep, insecure-defaults, modern-python"},
+    {"name": "cloudflare-skills", "kind": "skill", "source": "https://github.com/cloudflare/skills", "status": "candidate", "notes": "official; reference for the Cloudflare topology"},
+    {"name": "playwright", "kind": "mcp", "source": "npm:@playwright/mcp", "version": "0.0.84", "status": "pinned", "notes": "already pinned in mcp/servers.json"},
+    {"name": "context7", "kind": "mcp", "source": "npm:@upstash/context7-mcp", "status": "candidate", "notes": "pin a version before adding to mcp/servers.json"}
+  ]
+}
