@@ -211,6 +211,30 @@
       "notes": "Trail of Bits (CC BY-SA 4.0): semgrep/CodeQL; security-reviewer",
       "ref": "e4dd0bb5b15535f7c5a0834187dffba6ac37e4ff",
       "sha256": "2ef5c0ae8c33d9cc263ff5c7ae83e3783eab36a88162dc0bf0b14f1df913c98d"
+    },
+    {
+      "name": "github-actions-templates",
+      "kind": "skill",
+      "source": "https://github.com/wshobson/agents",
+      "subpath": "plugins/cicd-automation/skills/github-actions-templates",
+      "status": "approved",
+      "notes": "community; read before approving; DevOps candidate",
+      "ref": "9c61ab243def98f72da12abd41cfcf5bcd91af9d",
+      "sha256": "21692dd2adeaf9afc98cb3ca40629219ae44a52314484ae71d2ac389c3496ee5",
+      "reviewed": "2026-11-09",
+      "reviewed_by": "enes+claude"
+    },
+    {
+      "name": "secrets-management",
+      "kind": "skill",
+      "source": "https://github.com/wshobson/agents",
+      "subpath": "plugins/cicd-automation/skills/secrets-management",
+      "status": "approved",
+      "notes": "community; read before approving; DevOps candidate",
+      "ref": "9c61ab243def98f72da12abd41cfcf5bcd91af9d",
+      "sha256": "c1aa55738ca65529f88342197fd5d9f48efcf004247c95d4850c3ff708369b75",
+      "reviewed": "2026-11-09",
+      "reviewed_by": "enes+claude"
     }
   ]
 }

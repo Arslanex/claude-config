@@ -85,6 +85,15 @@ class DevopsAgentTest(unittest.TestCase):
         self.assertIn("CHANGE_ME", BODY)
         self.assertRegex(BODY, r"(?i)placeholders live only in `deploy/env\.example`")
 
+    def test_ci_and_secrets_examples_are_templates_only(self):
+        self.assertRegex(BODY, r"(?i)templates only")
+        for tool in ("`kubectl`", "`aws`", "`vault`", "`terraform`", "`./deploy.sh`"):
+            self.assertIn(tool, BODY)
+        self.assertRegex(BODY, r"(?i)never run by you")
+        self.assertRegex(BODY, r"(?i)pin third-party actions by commit SHA")
+        self.assertIn("least-privilege `permissions:` block", BODY)
+        self.assertRegex(BODY, r"never write a secret to `\$GITHUB_ENV`")
+
     def test_dockerw_output_is_never_piped(self):
         self.assertRegex(BODY, r"Never pipe or chain dockerw output \(no `\| head`, no `\| grep`\)")
         self.assertRegex(BODY, r"(?i)read it as printed")
