@@ -82,7 +82,8 @@ class TestInit(InitTestCase):
         self.init()
         lines = (self.proj / ".gitignore").read_text().splitlines()
         self.assertEqual(lines, ["node_modules", ".claude/settings.local.json",
-                                 "CLAUDE.local.md", ".obsidian/"])
+                                 ".claude/session-state.md", "CLAUDE.local.md",
+                                 ".obsidian/", ".env", ".env.*"])
 
     def test_existing_user_files_are_not_overwritten(self):
         (self.proj / "CLAUDE.md").write_text("mine\n")
