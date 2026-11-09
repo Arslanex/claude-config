@@ -10,7 +10,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-DOCS_ENGINE_VERSION = 4
+DOCS_ENGINE_VERSION = 5
 
 REQUIRED = ("id", "title", "status", "area", "updated")
 STATUSES = ("draft", "accepted", "superseded", "archived")
@@ -31,7 +31,7 @@ AREAS = {
     "architecture": ("01-architecture", ("ARCH",)),
     "decisions": ("02-decisions", ("ADR",)),
     "domains": ("03-domains", ("DOM",)),
-    "operations": ("04-operations", ()),
+    "operations": ("04-operations", ("RUN",)),
     "work": ("05-work", ("T", "PLAN", "HO", "LOG")),
     "archive": ("99-archive", ()),
 }
@@ -49,6 +49,7 @@ KINDS = {
     "plan": ("PLAN", "plans"),
     "handoff": ("HO", "handoffs"),
     "log": ("LOG", "log"),
+    "runbook": ("RUN", ""),
 }
 
 BODIES = {
@@ -59,6 +60,7 @@ BODIES = {
     "plan": "## Objective\n\n## Steps\n\n## Risks\n",
     "handoff": "## State\n\n## Next steps\n\n## Gotchas\n",
     "log": "## Summary\n\n## Details\n",
+    "runbook": "## Purpose\n\n## Preconditions\n\n## Steps\n\n## Rollback\n\n## Verification\n",
 }
 
 
@@ -539,7 +541,7 @@ def cmd_graph(args):
 
 STALE_STATUSES = ("draft", "accepted")
 # Living doc kinds are scanned by default; task/handoff/log are historical records (--all adds them).
-LIVING_PREFIXES = tuple(KINDS[k][0] for k in ("adr", "module", "domain", "plan"))
+LIVING_PREFIXES = tuple(KINDS[k][0] for k in ("adr", "module", "domain", "plan", "runbook"))
 
 
 def cmd_stale(args):
@@ -594,7 +596,7 @@ def build_parser():
     p.set_defaults(func=cmd_lint)
     add("index", help="regenerate INDEX.md files").set_defaults(func=cmd_index)
     add("graph", help="regenerate the Mermaid dependency graph").set_defaults(func=cmd_graph)
-    p = add("stale", help="list draft/accepted living docs (ADR/ARCH/DOM/PLAN) not updated for N days (report only)")
+    p = add("stale", help="list draft/accepted living docs (ADR/ARCH/DOM/PLAN/RUN) not updated for N days (report only)")
     p.add_argument("--days", type=int, default=90, help="age threshold in days (default: 90)")
     p.add_argument("--all", action="store_true", help="also scan task/handoff/log docs (historical records)")
     p.add_argument("--today", help="reference date YYYY-MM-DD (default: real today)")

@@ -133,6 +133,7 @@ class NewTests(TempRoot):
             "plan": "05-work/plans/PLAN-0001-x.md",
             "handoff": "05-work/handoffs/HO-0001-x.md",
             "log": "05-work/log/LOG-0001-x.md",
+            "runbook": "04-operations/RUN-0001-x.md",
         }
         for kind, rel in expected.items():
             with self.subTest(kind):

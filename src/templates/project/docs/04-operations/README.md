@@ -6,6 +6,6 @@
 
 **File naming:** `<ID>-<kebab-title>.md` for generated docs (e.g. `overview-example-title.md`); lowercase kebab-case otherwise.
 
-**ID prefix:** none (no generated IDs)
+**ID prefix:** `RUN` for runbooks (`python3 tools/docs.py new runbook "<title>"`); other files here have no generated IDs
 
 Create docs with `python3 tools/docs.py new <kind> "<title>"`, not by hand.
