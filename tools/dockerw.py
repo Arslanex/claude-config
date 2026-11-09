@@ -376,7 +376,7 @@ def cmd_clean(args):
     return rc
 
 
-GATED = {"up", "run", "build", "start", "restart"}
+GATED = {"up", "run", "build", "start", "restart", "down"}
 ENV_CHECKED = {"config"}  # printing the config reads env_files, so they are checked, but the full policy does not apply
 KEEP_OPTS = {"-p", "--project-name", "--profile", "--ansi", "--progress", "--parallel"}
 

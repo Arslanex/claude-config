@@ -77,9 +77,8 @@ class Base(unittest.TestCase):
 
 
 class TestUngatedComposeCommands(Base):
-    """Only up/run/build/start/restart are validated; the other allowed subcommands run the raw config."""
+    """Only up/run/build/start/restart/down are validated; the other allowed subcommands run the raw config."""
 
-    @unittest.expectedFailure
     def test_down_does_not_touch_networks_of_other_projects(self):
         cfg = {"services": {"app": {"image": "alpine"}}, "networks": {"n": {"name": "otherproj_default"}}}
         self.set_config(cfg)

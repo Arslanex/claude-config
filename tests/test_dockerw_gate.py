@@ -167,7 +167,7 @@ class TestGateEndToEnd(Base):
         self.assertEqual(calls[2], f"compose -p {self.name} -f - up -d")
 
     def test_non_gated_commands_do_not_resolve_the_config(self):
-        for argv in (("compose", "ps"), ("compose", "logs", "web"), ("compose", "down"), ("compose", "stop")):
+        for argv in (("compose", "ps"), ("compose", "logs", "web"), ("compose", "stop")):
             with self.subTest(argv=argv):
                 if self.log.exists():
                     self.log.unlink()
@@ -175,6 +175,20 @@ class TestGateEndToEnd(Base):
                 self.assertEqual(r.returncode, 0, r.stderr)
                 self.assertEqual(len(self.calls()), 1)
         self.assertFalse((self.fake_dir / "stdin.json").exists())
+
+    def test_down_validates_the_config(self):
+        cfg = self.write_config()
+        r = self.run_tool("compose", "down")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        calls = self.calls()
+        self.assertEqual(len(calls), 3, calls)
+        self.assertEqual(calls[2], f"compose -p {self.name} -f - down")
+        self.assertEqual(json.loads((self.fake_dir / "stdin.json").read_text()), cfg)
+        self.write_config(networks={"n": {"name": "victim_default"}})
+        self.log.unlink()
+        r = self.run_tool("compose", "down")
+        self.assertEqual(r.returncode, 2, r.stderr)
+        self.assertFalse(any(c.endswith(" down") for c in self.calls()))
 
     def test_bad_config_is_refused_and_nothing_runs(self):
         self.write_config(services={"web": {"image": "a", "privileged": True}})
