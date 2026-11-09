@@ -2,52 +2,40 @@
   "version": 1,
   "skills": [
     {
-      "name": "docker-skills",
-      "kind": "skill",
-      "source": "https://github.com/docker/skills",
-      "subpath": "skills",
-      "status": "pinned",
-      "notes": "official; plugin docker-skills@docker; pin a reviewed tag via branch",
-      "ref": "9f04a05d5fcdbfac0f6088bc711e930a75896482",
-      "sha256": "876933616d3a28bd4b441dc7f59e93f0f7fe2c75fd9cde0757be12e2253b4c29"
-    },
-    {
       "name": "postgres-skills",
       "kind": "skill",
       "source": "https://github.com/microsoft/postgres-skills",
-      "status": "pinned",
-      "notes": "MIT; use the 11 foundational skills only; needs postgres-mcp against dev/test DB",
+      "status": "approved",
+      "notes": "MIT; use the 11 foundational skills only; needs postgres-mcp against dev/test DB | review 2026-11-09: descriptions, scripts and full pattern scan; references not read line by line",
+      "subpath": "plugin/skills/postgresql-best-practices",
       "ref": "45f53d74029c8ddfb2b7a675ab206a83d2e583c7",
-      "sha256": "6fae23b911aeac7f75eb9c96e605151c96300ba2a952e95005e83b4242f12f16"
+      "sha256": "955f0f1572ebe6e4e5eb704cc7bbfe5f95ddf6dcba9dabf052730c3fb11e9514",
+      "reviewed": "2026-11-09",
+      "reviewed_by": "enes+claude"
     },
     {
       "name": "react-best-practices",
       "kind": "skill",
       "source": "https://github.com/vercel-labs/agent-skills",
       "subpath": "skills/react-best-practices",
-      "status": "pinned",
-      "notes": "official Vercel; MIT",
+      "status": "approved",
+      "notes": "official Vercel; MIT | review 2026-11-09: descriptions, scripts and full pattern scan; references not read line by line",
       "ref": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
-      "sha256": "bb6e0b8c9463da1d8712a88d2903ae4c915f1a5037bc2bf22fd59a0adccf8f11"
+      "sha256": "bb6e0b8c9463da1d8712a88d2903ae4c915f1a5037bc2bf22fd59a0adccf8f11",
+      "reviewed": "2026-11-09",
+      "reviewed_by": "enes+claude"
     },
     {
       "name": "python-testing-patterns",
       "kind": "skill",
       "source": "https://github.com/wshobson/agents",
       "subpath": "plugins/python-development/skills/python-testing-patterns",
-      "status": "pinned",
-      "notes": "community; read before approving",
+      "status": "approved",
+      "notes": "community; read before approving | review 2026-11-09: descriptions, scripts and full pattern scan; references not read line by line",
       "ref": "9c61ab243def98f72da12abd41cfcf5bcd91af9d",
-      "sha256": "6767a5d3fae743a884617f12946dbc8c69e3b8dd08f2f68b97ba14ee6fdb6438"
-    },
-    {
-      "name": "trailofbits-skills",
-      "kind": "skill",
-      "source": "https://github.com/trailofbits/skills",
-      "status": "pinned",
-      "notes": "CC BY-SA 4.0: install via marketplace, do not copy; semgrep, insecure-defaults, modern-python",
-      "ref": "e4dd0bb5b15535f7c5a0834187dffba6ac37e4ff",
-      "sha256": "c5c1b2627226ea2e5f33d92c1397a3af4cf78cf51ff16387eb435a7037d2d202"
+      "sha256": "6767a5d3fae743a884617f12946dbc8c69e3b8dd08f2f68b97ba14ee6fdb6438",
+      "reviewed": "2026-11-09",
+      "reviewed_by": "enes+claude"
     },
     {
       "name": "cloudflare-skills",
@@ -78,20 +66,24 @@
       "kind": "skill",
       "source": "https://github.com/anthropics/skills",
       "subpath": "skills/webapp-testing",
-      "status": "pinned",
-      "notes": "official Anthropic; Playwright UI verification for Tester and Frontend",
+      "status": "approved",
+      "notes": "official Anthropic; Playwright UI verification for Tester and Frontend | review 2026-11-09: descriptions, scripts and full pattern scan; references not read line by line",
       "ref": "2c5958ecac7cee2b583967a2c4981d0f4a75c579",
-      "sha256": "3ded4688bd2037c39fe7f604a7e0ae8abac53fd95861e6b3c829baad25b29482"
+      "sha256": "3ded4688bd2037c39fe7f604a7e0ae8abac53fd95861e6b3c829baad25b29482",
+      "reviewed": "2026-11-09",
+      "reviewed_by": "enes+claude"
     },
     {
       "name": "frontend-design",
       "kind": "skill",
       "source": "https://github.com/anthropics/skills",
       "subpath": "skills/frontend-design",
-      "status": "pinned",
-      "notes": "official Anthropic; Frontend role",
+      "status": "approved",
+      "notes": "official Anthropic; Frontend role | review 2026-11-09: descriptions, scripts and full pattern scan; references not read line by line",
       "ref": "2c5958ecac7cee2b583967a2c4981d0f4a75c579",
-      "sha256": "d43ace63d22e3502ab5c53b63138dafd0431ed5fd2fa63320285c8167ab27de6"
+      "sha256": "d43ace63d22e3502ab5c53b63138dafd0431ed5fd2fa63320285c8167ab27de6",
+      "reviewed": "2026-11-09",
+      "reviewed_by": "enes+claude"
     },
     {
       "name": "cloudflare-docs-mcp",
@@ -99,6 +91,126 @@
       "source": "https://docs.mcp.cloudflare.com/mcp",
       "status": "candidate",
       "notes": "read-only docs server; remote, so no version to pin; DevOps only"
+    },
+    {
+      "name": "code-simplifier",
+      "kind": "skill",
+      "source": "https://github.com/anthropics/claude-plugins-official",
+      "status": "approved",
+      "notes": "official Anthropic; Backend last step; find its subpath before pinning | review 2026-11-09: descriptions, scripts and full pattern scan; references not read line by line",
+      "subpath": "plugins/code-simplifier",
+      "ref": "0412be76f50ab4f4f8abff3753efa9269fbbca5b",
+      "sha256": "cea4a992018dc5bcb1c60286cf2271034e55b19419cd6b0c2d6683b0f009852b",
+      "reviewed": "2026-11-09",
+      "reviewed_by": "enes+claude"
+    },
+    {
+      "name": "web-design-guidelines",
+      "kind": "skill",
+      "source": "https://github.com/vercel-labs/agent-skills",
+      "subpath": "skills/web-design-guidelines",
+      "status": "candidate",
+      "notes": "Frontend, later; fetches guidelines from the network at run time"
+    },
+    {
+      "name": "docker-destructive-guardrails",
+      "kind": "skill",
+      "source": "https://github.com/docker/skills",
+      "subpath": "skills/docker-destructive-guardrails",
+      "status": "approved",
+      "notes": "docker/skills; DevOps | review 2026-11-09: descriptions, scripts and full pattern scan; references not read line by line",
+      "ref": "9f04a05d5fcdbfac0f6088bc711e930a75896482",
+      "sha256": "278c5a858d0608f4faebd56e64dc25f853b662d15d1036b177ad7c55a7ff6d62",
+      "reviewed": "2026-11-09",
+      "reviewed_by": "enes+claude"
+    },
+    {
+      "name": "docker-compose-patterns",
+      "kind": "skill",
+      "source": "https://github.com/docker/skills",
+      "subpath": "skills/docker-compose-patterns",
+      "status": "approved",
+      "notes": "docker/skills; DevOps | review 2026-11-09: descriptions, scripts and full pattern scan; references not read line by line",
+      "ref": "9f04a05d5fcdbfac0f6088bc711e930a75896482",
+      "sha256": "c33db9c0c752f9ecc03429f769ca9a74391d7c87328bf8b25c49f2753140af32",
+      "reviewed": "2026-11-09",
+      "reviewed_by": "enes+claude"
+    },
+    {
+      "name": "docker-build-strategies",
+      "kind": "skill",
+      "source": "https://github.com/docker/skills",
+      "subpath": "skills/docker-build-strategies",
+      "status": "approved",
+      "notes": "docker/skills; DevOps | review 2026-11-09: descriptions, scripts and full pattern scan; references not read line by line",
+      "ref": "9f04a05d5fcdbfac0f6088bc711e930a75896482",
+      "sha256": "3af3057302940921c7d234f6bf712b547c2943181fe9dba777012f5a34df3da9",
+      "reviewed": "2026-11-09",
+      "reviewed_by": "enes+claude"
+    },
+    {
+      "name": "docker-project-foundations",
+      "kind": "skill",
+      "source": "https://github.com/docker/skills",
+      "subpath": "skills/docker-project-foundations",
+      "status": "approved",
+      "notes": "docker/skills; DevOps | review 2026-11-09: descriptions, scripts and full pattern scan; references not read line by line",
+      "ref": "9f04a05d5fcdbfac0f6088bc711e930a75896482",
+      "sha256": "46aaca5dde57783a9565404ce5e89c377c24f044270ade490142b7518cd4b977",
+      "reviewed": "2026-11-09",
+      "reviewed_by": "enes+claude"
+    },
+    {
+      "name": "docker-docs",
+      "kind": "skill",
+      "source": "https://github.com/docker/skills",
+      "subpath": "skills/docker-docs",
+      "status": "pinned",
+      "notes": "docker/skills; DevOps",
+      "ref": "9f04a05d5fcdbfac0f6088bc711e930a75896482",
+      "sha256": "8d30eb1482450034b3db84dfa8422ea74c53dff741d9e35d726fb880ce793a38"
+    },
+    {
+      "name": "insecure-defaults",
+      "kind": "skill",
+      "source": "https://github.com/trailofbits/skills",
+      "subpath": "plugins/insecure-defaults",
+      "status": "pinned",
+      "notes": "Trail of Bits (CC BY-SA 4.0): install, do not redistribute",
+      "ref": "e4dd0bb5b15535f7c5a0834187dffba6ac37e4ff",
+      "sha256": "43f11772d74f5f33d8614266703011e680c21bbe264e9ea3779b62939fea4d89"
+    },
+    {
+      "name": "modern-python",
+      "kind": "skill",
+      "source": "https://github.com/trailofbits/skills",
+      "subpath": "plugins/modern-python/skills/modern-python",
+      "status": "pinned",
+      "notes": "skill only: do NOT install the plugin hooks (pip/python shims overlap dep-guard); references teach curl|sh installs, guard.py blocks them",
+      "ref": "e4dd0bb5b15535f7c5a0834187dffba6ac37e4ff",
+      "sha256": "da37bc983f3db29c967bd74d72edc592ccc3cf077e3ab42ef351430c6d963f2f"
+    },
+    {
+      "name": "agentic-actions-auditor",
+      "kind": "skill",
+      "source": "https://github.com/trailofbits/skills",
+      "subpath": "plugins/agentic-actions-auditor",
+      "status": "approved",
+      "notes": "Trail of Bits (CC BY-SA 4.0): install, do not redistribute | review 2026-11-09: descriptions, scripts and full pattern scan; references not read line by line",
+      "ref": "e4dd0bb5b15535f7c5a0834187dffba6ac37e4ff",
+      "sha256": "59b5b20477b51cc316dbc93fc1f42c7ffa4bc4e5f7a2347f6fe12243cae3d73d",
+      "reviewed": "2026-11-09",
+      "reviewed_by": "enes+claude"
+    },
+    {
+      "name": "static-analysis",
+      "kind": "skill",
+      "source": "https://github.com/trailofbits/skills",
+      "subpath": "plugins/static-analysis",
+      "status": "pinned",
+      "notes": "Trail of Bits (CC BY-SA 4.0): semgrep/CodeQL; security-reviewer",
+      "ref": "e4dd0bb5b15535f7c5a0834187dffba6ac37e4ff",
+      "sha256": "2ef5c0ae8c33d9cc263ff5c7ae83e3783eab36a88162dc0bf0b14f1df913c98d"
     }
   ]
 }
