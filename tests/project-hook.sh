@@ -35,4 +35,5 @@ if ( cd "$t/p" && git push -q origin main > /dev/null 2>&1 ); then ok "pass (yes
 
 newproj --kind fastapi-saas --pkg app
 if [ -x "$t/p/tools/git-hooks/pre-push" ] && grep -q '^hooks:' "$t/p/Makefile"; then ok "profile (fastapi-saas'ta hook ve hooks hedefi var)"; else bad "fastapi-saas'ta hook veya hedef eksik"; fi
+if ( cd "$t/p" && make -n verify-full > /dev/null 2>&1 ); then ok "verify-full (fastapi-saas'ta kuru calistirma gecer)"; else bad "verify-full kuru calistirma basarisiz"; fi
 if [ "$fail" = 0 ]; then echo PASS; else echo FAIL; exit 1; fi
