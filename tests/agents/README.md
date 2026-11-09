@@ -10,6 +10,11 @@ Runs each case in `cases/` through `claude -p` and checks the reviewer agent's f
 2. Add `case.json`: `agent`, `expect` (IDs that must appear), `forbid` (IDs that must not), `clean` (true = must say `NO FINDINGS`).
 3. Clean cases: `expect` is empty and `forbid` lists every ID in the agent's dictionary.
 
+## Security cases for PORT-EXPOSED
+- `port-exposed`: a dev compose publishes `5432:5432`; expects only PORT-EXPOSED, since the dev credential is not SECRET-LITERAL.
+- `loopback-dev-creds-clean`: same diff bound to `127.0.0.1`; must be clean, guarding against false positives on dev credentials and loopback ports.
+- `secret-literal` stays on a non-dev compose file, where a hardcoded password is still SECRET-LITERAL.
+
 ## Running
 - `make agent-eval` calls the model once per case, so it costs tokens and is not part of `make check`.
 - `make test` runs `tests/test_agent_harness.py`, which is deterministic and never calls claude.

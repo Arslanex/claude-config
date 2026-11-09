@@ -1,6 +1,6 @@
 {
   "agent": "security-reviewer",
   "expect": [],
-  "forbid": ["RLS-MISSING", "DEFINER-SEARCH-PATH", "SECRET-LITERAL", "GRANT-TO-PUBLIC"],
+  "forbid": ["RLS-MISSING", "DEFINER-SEARCH-PATH", "SECRET-LITERAL", "GRANT-TO-PUBLIC", "PORT-EXPOSED"],
   "clean": true
 }
