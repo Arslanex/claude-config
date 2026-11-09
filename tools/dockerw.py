@@ -28,16 +28,53 @@ class Refused(Exception):
     pass
 
 
-def project_root():
-    env = os.environ.get("DOCKERW_ROOT")
-    if env:
-        return Path(env).resolve()
+CONF = Path(__file__).resolve().parent / "dockerw.conf.json"
+DOCKER_CANDIDATES = ("/usr/local/bin/docker", "/opt/homebrew/bin/docker",
+                     "/Applications/Docker.app/Contents/Resources/bin/docker", "/usr/bin/docker")
+SAFE_PATH = "/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/Applications/Docker.app/Contents/Resources/bin"
+
+
+def _conf():
+    """Settings come from a file next to this script (not writable by the sandbox), never from env vars."""
     try:
-        out = subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True,
-                             check=True).stdout.strip()
-        return Path(out).resolve()
-    except (OSError, subprocess.CalledProcessError):
-        return Path.cwd().resolve()
+        data = json.loads(CONF.read_text())
+        return data if isinstance(data, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def _docker():
+    configured = _conf().get("docker")
+    if configured:
+        return str(configured)
+    for cand in DOCKER_CANDIDATES:
+        if os.access(cand, os.X_OK):
+            return cand
+    raise SystemExit('dockerw: docker binary not found; set "docker" in dockerw.conf.json next to this script')
+
+
+def _env():
+    env = {k: v for k, v in os.environ.items() if not k.startswith(("DOCKER_", "COMPOSE_", "BUILDKIT_", "BUILDX_"))}
+    env["PATH"] = SAFE_PATH
+    return env
+
+
+def project_root():
+    configured = _conf().get("root")
+    if configured:
+        return Path(configured).resolve()
+    cwd = Path.cwd().resolve()
+    for d in (cwd, *cwd.parents):
+        if (d / ".git").exists():
+            return d
+    return cwd
+
+
+def root_reason(root):
+    root = Path(root).resolve()
+    if root == Path(root.anchor) or root == Path.home().resolve():
+        return f"project root is too broad ({root})"
+    return None
 
 
 def project_name(root):
@@ -152,6 +189,9 @@ def _compose(args, root, cwd):
 
 
 def _check(argv, root, cwd):
+    broad = root_reason(root)
+    if broad:
+        raise Refused(broad)
     if not argv:
         raise Refused("no command given")
     verb, rest = argv[0], argv[1:]
@@ -179,12 +219,8 @@ def check(argv, root, cwd):
         return str(exc), None
 
 
-def _docker():
-    return os.environ.get("DOCKERW_DOCKER", "docker")
-
-
 def _run(args, cwd=None):
-    return subprocess.run([_docker(), *args], capture_output=True, text=True, cwd=cwd)
+    return subprocess.run([_docker(), *args], capture_output=True, text=True, cwd=cwd, env=_env())
 
 
 def is_free(port):
@@ -280,6 +316,10 @@ def cmd_clean(args):
 
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
+    broad = root_reason(project_root())
+    if broad:
+        print(f"dockerw: refused: {broad}", file=sys.stderr)
+        return 2
     if argv[:1] == ["ports"]:
         return cmd_ports(argv[1:])
     if argv[:1] == ["clean"]:
@@ -288,8 +328,8 @@ def main(argv=None):
     if reason:
         print(f"dockerw: refused: {reason}", file=sys.stderr)
         return 2
-    docker = os.environ.get("DOCKERW_DOCKER", "docker")
-    os.execvp(docker, [docker, *final])
+    docker = _docker()
+    os.execve(docker, [docker, *final], _env())
 
 
 if __name__ == "__main__":

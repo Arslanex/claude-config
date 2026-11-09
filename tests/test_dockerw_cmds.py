@@ -39,6 +39,15 @@ def free_port():
     return port
 
 
+def staged_tool(root, fake):
+    """Copy the tool next to a config file, the way it is installed; env vars cannot configure it."""
+    b = Path(root) / "bin"
+    b.mkdir(exist_ok=True)
+    shutil.copy(TOOL, b / "dockerw.py")
+    (b / "dockerw.conf.json").write_text(json.dumps({"docker": str(fake), "root": str(root)}))
+    return b / "dockerw.py"
+
+
 class Base(unittest.TestCase):
     def setUp(self):
         self.mod = load()
@@ -53,9 +62,8 @@ class Base(unittest.TestCase):
         self.name = self.mod.project_name(self.root)
 
     def run_tool(self, *argv):
-        env = dict(os.environ, DOCKERW_DOCKER=str(self.fake), DOCKERW_ROOT=str(self.root),
-                   DOCKERW_LOG=str(self.log), FAKE=str(self.fake_dir))
-        return subprocess.run([sys.executable, str(TOOL), *argv], cwd=self.root, env=env,
+        env = dict(os.environ, DOCKERW_LOG=str(self.log), FAKE=str(self.fake_dir))
+        return subprocess.run([sys.executable, str(staged_tool(self.root, self.fake)), *argv], cwd=self.root, env=env,
                               capture_output=True, text=True)
 
     def occupy(self, port):
