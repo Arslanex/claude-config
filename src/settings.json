@@ -36,8 +36,6 @@
       "mcp__cloudflare-api__docs",
       "mcp__cloudflare-api__search",
       "mcp__cloudflare-api__whoami",
-      "mcp__playwright__browser_evaluate",
-      "mcp__playwright__browser_file_upload",
       "mcp__playwright__browser_fill_form",
       "mcp__playwright__browser_type",
       "mcp__playwright__browser_press_key",
@@ -77,7 +75,9 @@
     "ask": [
       "Bash(gh pr merge *)",
       "Bash(gh repo create *)",
-      "mcp__cloudflare-api__execute"
+      "mcp__cloudflare-api__execute",
+      "mcp__playwright__browser_evaluate",
+      "mcp__playwright__browser_file_upload"
     ]
   },
   "autoCompactWindow": 400000,
