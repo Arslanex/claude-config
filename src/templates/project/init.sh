@@ -53,7 +53,7 @@ if [ -n "$KIND" ]; then
     rel="${f#"$P"/}"
     dst="$rel"
     [ -n "$PKG" ] && dst="${rel//__PKG__/$PKG}"
-    tmp="$(mktemp)"
+    tmp="$(mktemp "${TMPDIR:-/tmp}/init.XXXXXX")"
     cp "$f" "$tmp"
     subst "$tmp"
     if [ ! -e "$dst" ]; then
