@@ -1,0 +1,31 @@
+diff --git a/docs/01-architecture/ARCH-0005-liste-sayfalama.md b/docs/01-architecture/ARCH-0005-liste-sayfalama.md
+new file mode 100644
+index 0000000..e7f2b08
+--- /dev/null
++++ b/docs/01-architecture/ARCH-0005-liste-sayfalama.md
+@@ -0,0 +1,25 @@
++# ARCH-0005: Liste uç noktalarında imleç sayfalaması
++
++Durum: Taslak
++
++## Bağlam
++Liste uç noktaları sınırsız satır dönüyor; büyük tenant'ta yanıt süresi ve bellek artıyor.
++
++## Karar
++- Tüm liste uç noktaları `limit` (varsayılan 50, en çok 100) ve opak `cursor` alır.
++- Sıralama `(created_at, id)` ile sabittir; imleç bu çiftin kodlanmış halidir.
++- Yanıt `items` ve `next_cursor` döner; son sayfada `next_cursor` null'dır.
++- Geçersiz veya bozuk imleç RFC 9457 ile 422 döner (ARCH-0001, desen 3).
++
++## Seçenekler
++- Offset/limit: yeni satır eklenince sayfa kayar ve derin sayfalar yavaşlar; seçilmedi.
++- Yalnız `limit`: bütün veriye erişimi çözmez; seçilmedi.
++
++## Sonuçlar
++- Mevcut istemciler `items` zarfına geçer; sözleşme değişikliği `make openapi` ve CI diff ile görünür olur.
++- Eski sınırsız davranış korunmaz, `limit` verilmeyen istek 50 satır alır.
++
++## Doğrulama
++Sözleşme testi: sınır, son sayfa, bozuk imleç. `make openapi` CI diff'i zarf değişikliğini yakalar.
++
++Kullanıcı onayı gereken madde: yok.

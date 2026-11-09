@@ -1,0 +1,6 @@
+{
+  "agent": "devils-advocate",
+  "expect": ["DATA-LOSS-RISK", "OVER-ENGINEERING"],
+  "forbid": ["CRITERIA-MISMATCH"],
+  "clean": false
+}

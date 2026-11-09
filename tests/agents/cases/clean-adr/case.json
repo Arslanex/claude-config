@@ -1,0 +1,6 @@
+{
+  "agent": "devils-advocate",
+  "expect": [],
+  "forbid": ["HIDDEN-ASSUMPTION", "MISSED-FAILURE", "DATA-LOSS-RISK", "SECURITY-RISK", "OVER-ENGINEERING", "CRITERIA-MISMATCH", "RULE-VIOLATION"],
+  "clean": true
+}

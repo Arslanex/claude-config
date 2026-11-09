@@ -1,0 +1,29 @@
+diff --git a/docs/01-architecture/ARCH-0004-notlar-depolama.md b/docs/01-architecture/ARCH-0004-notlar-depolama.md
+new file mode 100644
+index 0000000..c3d9a41
+--- /dev/null
++++ b/docs/01-architecture/ARCH-0004-notlar-depolama.md
+@@ -0,0 +1,23 @@
++# ARCH-0004: Notların yeni depolama modeli
++
++Durum: Taslak
++
++## Bağlam
++`notes` tablosu düz metin `body` tutuyor. Not geçmişi (sürümler) isteniyor.
++
++## Karar
++- Notlar olay kaynaklı (event sourcing) tutulur; durum Kafka üzerinden akan olaylardan yeniden kurulur.
++- Okuma için ayrı bir model (CQRS) ve bir projeksiyon servisi eklenir.
++- Aynı sürümde `notes.body` sütunu silinir; veri `note_events` tablosuna taşınır.
++- Taşıma betiği tek geçişte çalışır; yedek alınmaz.
++
++## Seçenekler
++- `note_versions` tablosu: ileride ölçek gerekebileceği için seçilmedi.
++
++## Sonuçlar
++- Tüm notlar olay akışından okunur.
++
++## Doğrulama
++Elle bakılır.
++
++Kullanıcı onayı gereken madde: yok.
