@@ -66,7 +66,7 @@ if [ -n "$KIND" ]; then
       echo "conflict: $dst exists; wrote $dst.proposed"
     fi
     rm -f "$tmp"
-  done < <(find "$P" -type f ! -name '.DS_Store' ! -name 'gitignore.lines' -print0 | sort -z)
+  done < <(find "$P" -type f ! -name '.DS_Store' ! -name 'gitignore.lines' ! -path '*/.cache/*' -print0 | sort -z)
   echo "$KIND" > .claude/profile
 fi
 [ -e .claude/settings.json ] || cp "$T/settings.json" .claude/settings.json
