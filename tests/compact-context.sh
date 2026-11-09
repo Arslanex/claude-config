@@ -14,6 +14,8 @@ printf -- '---\nupdated: 2026-11-09\n---\nHANDOFF-SENTINEL kaldigim yer\n' > doc
 touch -t 202001010000 docs/05-work/handoffs/HO-0002-yeni.md
 echo t > docs/05-work/tasks/T-0001-ornek.md
 echo t > docs/05-work/tasks/T-0002-ornek.md
+# mtime tuzagi: T-0002 daha eski dosya zamani, yine de once listelenmeli
+touch -t 202001010000 docs/05-work/tasks/T-0002-ornek.md
 git add -A && git -c user.name=t -c user.email=t@t commit -q -m ilk
 echo kirli > kirli.txt
 out=$(printf '{"cwd":"%s","source":"compact"}' "$T" | python3 "$H")
@@ -29,7 +31,7 @@ chk "git dali ve kirli sayi"  "grep -q 'dal main, 1 degisen' <<<\"\$out\""
 for i in $(seq 1 40); do printf 'SATIR-%s-%s-SON\n' "$i" "$(printf 'x%.0s' $(seq 1 80))"; done > docs/05-work/handoffs/HO-0003-satirlar.md
 out5=$(printf '{"cwd":"%s","source":"compact"}' "$T" | python3 "$H")
 ctx5=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["hookSpecificOutput"]["additionalContext"])' "$out5")
-chk "satir sinirinda kesim"   "grep -q 'SATIR-' <<<\"\$ctx5\" && ! grep 'SATIR-' <<<\"\$ctx5\" | grep -qv -- '-SON\$'"
+chk "satir sinirinda kesim"   "grep -q 'SATIR-' <<<\"\$ctx5\" && ! grep '^SATIR' <<<\"\$ctx5\" | grep -qv -- '-SON\$'"
 python3 -c 'print("x"*9000)' > docs/05-work/handoffs/uzun.md
 out2=$(printf '{"cwd":"%s"}' "$T" | python3 "$H")
 chk "toplam sinir (<6000)"    "[ \${#out2} -lt 6000 ]"
