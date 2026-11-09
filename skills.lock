@@ -1,13 +1,104 @@
 {
   "version": 1,
   "skills": [
-    {"name": "docker-skills", "kind": "skill", "source": "https://github.com/docker/skills", "subpath": "skills", "status": "candidate", "notes": "official; plugin docker-skills@docker; pin a reviewed tag via branch"},
-    {"name": "postgres-skills", "kind": "skill", "source": "https://github.com/microsoft/postgres-skills", "status": "candidate", "notes": "MIT; use the 11 foundational skills only; needs postgres-mcp against dev/test DB"},
-    {"name": "react-best-practices", "kind": "skill", "source": "https://github.com/vercel-labs/agent-skills", "subpath": "skills/react-best-practices", "status": "candidate", "notes": "official Vercel; MIT"},
-    {"name": "python-testing-patterns", "kind": "skill", "source": "https://github.com/wshobson/agents", "subpath": "plugins/python-development/skills/python-testing-patterns", "status": "candidate", "notes": "community; read before approving"},
-    {"name": "trailofbits-skills", "kind": "skill", "source": "https://github.com/trailofbits/skills", "status": "candidate", "notes": "CC BY-SA 4.0: install via marketplace, do not copy; semgrep, insecure-defaults, modern-python"},
-    {"name": "cloudflare-skills", "kind": "skill", "source": "https://github.com/cloudflare/skills", "status": "candidate", "notes": "official; reference for the Cloudflare topology"},
-    {"name": "playwright", "kind": "mcp", "source": "npm:@playwright/mcp", "version": "0.0.84", "status": "pinned", "notes": "already pinned in mcp/servers.json"},
-    {"name": "context7", "kind": "mcp", "source": "npm:@upstash/context7-mcp", "status": "candidate", "notes": "pin a version before adding to mcp/servers.json"}
+    {
+      "name": "docker-skills",
+      "kind": "skill",
+      "source": "https://github.com/docker/skills",
+      "subpath": "skills",
+      "status": "pinned",
+      "notes": "official; plugin docker-skills@docker; pin a reviewed tag via branch",
+      "ref": "9f04a05d5fcdbfac0f6088bc711e930a75896482",
+      "sha256": "876933616d3a28bd4b441dc7f59e93f0f7fe2c75fd9cde0757be12e2253b4c29"
+    },
+    {
+      "name": "postgres-skills",
+      "kind": "skill",
+      "source": "https://github.com/microsoft/postgres-skills",
+      "status": "pinned",
+      "notes": "MIT; use the 11 foundational skills only; needs postgres-mcp against dev/test DB",
+      "ref": "45f53d74029c8ddfb2b7a675ab206a83d2e583c7",
+      "sha256": "6fae23b911aeac7f75eb9c96e605151c96300ba2a952e95005e83b4242f12f16"
+    },
+    {
+      "name": "react-best-practices",
+      "kind": "skill",
+      "source": "https://github.com/vercel-labs/agent-skills",
+      "subpath": "skills/react-best-practices",
+      "status": "pinned",
+      "notes": "official Vercel; MIT",
+      "ref": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+      "sha256": "bb6e0b8c9463da1d8712a88d2903ae4c915f1a5037bc2bf22fd59a0adccf8f11"
+    },
+    {
+      "name": "python-testing-patterns",
+      "kind": "skill",
+      "source": "https://github.com/wshobson/agents",
+      "subpath": "plugins/python-development/skills/python-testing-patterns",
+      "status": "pinned",
+      "notes": "community; read before approving",
+      "ref": "9c61ab243def98f72da12abd41cfcf5bcd91af9d",
+      "sha256": "6767a5d3fae743a884617f12946dbc8c69e3b8dd08f2f68b97ba14ee6fdb6438"
+    },
+    {
+      "name": "trailofbits-skills",
+      "kind": "skill",
+      "source": "https://github.com/trailofbits/skills",
+      "status": "pinned",
+      "notes": "CC BY-SA 4.0: install via marketplace, do not copy; semgrep, insecure-defaults, modern-python",
+      "ref": "e4dd0bb5b15535f7c5a0834187dffba6ac37e4ff",
+      "sha256": "c5c1b2627226ea2e5f33d92c1397a3af4cf78cf51ff16387eb435a7037d2d202"
+    },
+    {
+      "name": "cloudflare-skills",
+      "kind": "skill",
+      "source": "https://github.com/cloudflare/skills",
+      "status": "pinned",
+      "notes": "official; reference for the Cloudflare topology",
+      "ref": "6eb6c781aa9b6438e0c7307bd102788a75fe1a6d",
+      "sha256": "26c2faabdb782b7c2c67d1b2af61cd060c476363c3fd9c0c64f8efd9d1315d0c"
+    },
+    {
+      "name": "playwright",
+      "kind": "mcp",
+      "source": "npm:@playwright/mcp",
+      "version": "0.0.84",
+      "status": "pinned",
+      "notes": "already pinned in mcp/servers.json"
+    },
+    {
+      "name": "context7",
+      "kind": "mcp",
+      "source": "npm:@upstash/context7-mcp",
+      "status": "candidate",
+      "notes": "pin a version before adding to mcp/servers.json"
+    },
+    {
+      "name": "webapp-testing",
+      "kind": "skill",
+      "source": "https://github.com/anthropics/skills",
+      "subpath": "skills/webapp-testing",
+      "status": "pinned",
+      "notes": "official Anthropic; Playwright UI verification for Tester and Frontend",
+      "ref": "2c5958ecac7cee2b583967a2c4981d0f4a75c579",
+      "sha256": "3ded4688bd2037c39fe7f604a7e0ae8abac53fd95861e6b3c829baad25b29482"
+    },
+    {
+      "name": "frontend-design",
+      "kind": "skill",
+      "source": "https://github.com/anthropics/skills",
+      "subpath": "skills/frontend-design",
+      "status": "pinned",
+      "notes": "official Anthropic; Frontend role",
+      "ref": "2c5958ecac7cee2b583967a2c4981d0f4a75c579",
+      "sha256": "d43ace63d22e3502ab5c53b63138dafd0431ed5fd2fa63320285c8167ab27de6"
+    },
+    {
+      "name": "cloudflare-docs-mcp",
+      "kind": "mcp",
+      "source": "https://docs.mcp.cloudflare.com/mcp",
+      "status": "candidate",
+      "notes": "read-only docs server; remote, so no version to pin; DevOps only"
+    }
   ]
 }
