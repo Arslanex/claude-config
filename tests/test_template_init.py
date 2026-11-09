@@ -72,7 +72,7 @@ class TestInit(InitTestCase):
         self.init()
         self.init()
         lines = (self.proj / ".gitignore").read_text().splitlines()
-        for l in (".claude/settings.local.json", "CLAUDE.local.md", ".obsidian/"):
+        for l in (".claude/settings.local.json", "CLAUDE.local.md", ".obsidian/", ".DS_Store"):
             self.assertEqual(lines.count(l), 1, l)
         self.assertIn("node_modules/", lines)
 
@@ -83,7 +83,7 @@ class TestInit(InitTestCase):
         lines = (self.proj / ".gitignore").read_text().splitlines()
         self.assertEqual(lines, ["node_modules", ".claude/settings.local.json",
                                  ".claude/session-state.md", "CLAUDE.local.md",
-                                 ".obsidian/", ".env", ".env.*"])
+                                 ".obsidian/", ".env", ".env.*", ".DS_Store"])
 
     def test_existing_user_files_are_not_overwritten(self):
         (self.proj / "CLAUDE.md").write_text("mine\n")

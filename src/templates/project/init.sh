@@ -95,7 +95,7 @@ touch .gitignore
 if [ -s .gitignore ] && [ -n "$(tail -c 1 .gitignore)" ]; then
   echo >> .gitignore
 fi
-for l in ".claude/settings.local.json" ".claude/session-state.md" "CLAUDE.local.md" ".obsidian/" ".env" ".env.*"; do
+for l in ".claude/settings.local.json" ".claude/session-state.md" "CLAUDE.local.md" ".obsidian/" ".env" ".env.*" ".DS_Store"; do
   grep -qxF "$l" .gitignore || echo "$l" >> .gitignore
 done
 if [ -n "$KIND" ] && [ -f "$T/../profiles/$KIND/gitignore.lines" ]; then
