@@ -56,6 +56,20 @@ class DevopsAgentTest(unittest.TestCase):
                 if len(parts) > 1 and parts[1] != "...":  # "dockerw ..." is the generic form
                     self.assertIn(parts[1], known)
 
+    def test_compose_validation_and_env_example_rules(self):
+        self.assertIn("`dockerw compose --env-file .env.example -f compose.yaml config`", BODY)
+        self.assertRegex(BODY, r"(?i)options before the subcommand")
+        self.assertRegex(BODY, r"(?i)non-empty placeholder for every variable the compose files require")
+        self.assertIn("without a real `.env`", BODY)
+        self.assertIn("Never create or read `.env`", BODY)
+
+    def test_dockerw_output_is_never_piped(self):
+        self.assertRegex(BODY, r"Never pipe or chain dockerw output \(no `\| head`, no `\| grep`\)")
+        self.assertRegex(BODY, r"(?i)read it as printed")
+
+    def test_no_stale_installed_dockerw_claim(self):
+        self.assertNotRegex(BODY, r"(?i)installed dockerw|dockerw (is )?(old|outdated|stale)")
+
     def test_never_deploys(self):
         self.assertRegex(BODY, r"NEVER deploy")
         self.assertRegex(BODY, r"(?i)deploy packages")

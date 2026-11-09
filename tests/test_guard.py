@@ -122,7 +122,7 @@ class TestAllowed(GuardTestCase):
             "aws sts get-caller-identity",
             "gcloud compute instances list",
             "terraform plan",
-            "tools/dockerw ps",
+            "dockerw ps",
         ]
         for cmd in cases:
             with self.subTest(cmd=cmd):

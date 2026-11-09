@@ -30,8 +30,11 @@ PROTECTED = {"main", "master", "production", "prod"}
 
 
 def block(kind, why):
+    if kind == "dockerw":
+        print(f"BLOCKED [dockerw]: {why}", file=sys.stderr)
+        sys.exit(2)
     if kind == "docker":
-        tail = "Run the same command through tools/dockerw, which refuses unsafe flags and paths outside the project."
+        tail = "Run the same command through dockerw, which refuses unsafe flags and paths outside the project."
     else:
         tail = "Do not retry or work around this. Stop and ask the user for explicit approval."
     print(f"BLOCKED [{kind}]: {why}. {tail}", file=sys.stderr)
@@ -120,6 +123,9 @@ RESERVED = {"if", "then", "else", "elif", "do", "while", "until", "!", "{", "}"}
 UNSUPPORTED = {"case", "select", "coproc", "function"}
 ASSIGN = re.compile(r"^[A-Za-z_]\w*=")
 MAX_DEPTH = 8
+DOCKERW_WHY = ("call dockerw alone from the project directory by its bare name "
+               "(no pipe, chain, env prefix, cd or path). Other forms run inside the sandbox and fail.")
+saw_dockerw = False
 
 
 class ParseError(Exception):
@@ -478,6 +484,9 @@ def check_cmd(c, depth):
     if name.startswith("$") or name in UNSUPPORTED:
         raise ParseError(f"cannot resolve command name {name!r}")
     args = argv[1:]
+    if name == "dockerw":
+        global saw_dockerw
+        saw_dockerw = True
     if name == "git":
         sub, rest = git_split(args)
         s = " ".join(["git", sub] + rest)
@@ -522,6 +531,13 @@ def analyze(text, depth=0):
     Parser(text, out).parse_all()
     for c in out:
         check_cmd(c, depth)
+    if depth == 0 and saw_dockerw:
+        only = out[0] if len(out) == 1 else None
+        raw = text.strip()
+        grouped = raw.startswith(("(", "{")) or re.search(r"(?<![>&])&$", raw)  # subshell or background
+        if grouped or not (only and only.words and only.words[0] == "dockerw" and not only.heredocs
+                           and only.pipe_from is None):
+            block("dockerw", DOCKERW_WHY)
 
 
 def scan_whole_text(text):
@@ -540,6 +556,8 @@ def scan_whole_text(text):
             block("money", CLOUD_WHY)
     if re.search(r"\bgit\s+push\b", text):
         check_protected_branch()
+    if re.search(start + r"dockerw(?=\s|$)", text) and not re.match(r"\s*dockerw(?:\s[^;&|`$()<>\n]*)?$", text):
+        block("dockerw", DOCKERW_WHY)
 
 
 try:

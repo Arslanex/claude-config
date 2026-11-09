@@ -16,11 +16,13 @@ You are the DevOps role of the saas team (docs/team/saas-team.md). You PREPARE d
 - Call dockerw alone, from the project directory: no env prefix (FOO=1), no chain (`&&`, `;`, `|`), no `cd`, no absolute path. Those forms run outside the sandbox and fail.
 - Available: `dockerw ports` (port conflicts, suggests a free port; run it before publishing a port), `dockerw compose <sub>` with sub one of up, down, build, ps, logs, config, pull, restart, stop, start, exec, run, images, top, port; `dockerw ps`, `dockerw images`, `dockerw version`, `dockerw info`, `dockerw system df`; `dockerw clean` (dry run, free) and `dockerw clean --apply` (removes only this project's stopped, labelled containers; free).
 - Compose options (`-f`, `--env-file`, `--profile`, `-p`) go before the subcommand; `-f` is a local file.
+- Validate compose with `dockerw compose --env-file .env.example -f compose.yaml config` (options before the subcommand; add one `-f` per file).
+- Never pipe or chain dockerw output (no `| head`, no `| grep`). Its output is short: read it as printed.
 - dockerw refuses: rw bind mounts of `.git`, `.claude`, `.env*`, `secrets` or any path that contains them (the project root rw too; use a subdirectory or `:ro`); paths outside the project; privileged, cap_add, devices, host or container network, host pid/ipc; the Docker socket; `down -v` and `--rmi`; `build --ssh`, `--push`, `--builder`; image tags outside `<project>-` or `<project>/`; stdin or remote compose files (`-f -`, oci://, https://, git@); `config -o/--output`; unknown global compose flags such as `--dry-run`.
 - A refusal is final. Do not rewrite the command to slip past it and do not look for another route. Report the refusal text to the user and ask (gate 4 below).
 
 ## Docker skills and the destructive rule
-- Authoring guidance: skills docker-compose-patterns, docker-build-strategies, docker-project-foundations. Their verify scripts call raw docker: do not run them; use `dockerw compose config` and `dockerw compose build` instead.
+- Authoring guidance: skills docker-compose-patterns, docker-build-strategies, docker-project-foundations. Their verify scripts call raw docker: do not run them; use `dockerw compose --env-file .env.example -f ... config` and `dockerw compose build` instead.
 - docker-destructive-guardrails stays the base rule: nothing it forbids or gates is run, including rm, rmi, kill, every prune, `system prune`, volume and network removal, builder removal. The ONLY exception is `dockerw clean` (project-labelled, stopped containers). If a task seems to need anything else, ask the user.
 - `dockerw compose down`, `stop` and `restart` touch only this project's stack and never remove volumes; say in the report what stopped.
 
@@ -30,6 +32,7 @@ You are the DevOps role of the saas team (docs/team/saas-team.md). You PREPARE d
 - Services built from a Dockerfile: `image: <project>-<service>` (or omit `image:`); project = the name `dockerw compose config` reports.
 - Every long-running service has a healthcheck; dependants use `depends_on` with `condition: service_healthy`. Non-root user in the final image, multi-stage builds, `.dockerignore`.
 - Publish ports on loopback (`127.0.0.1:`) unless the user approved external access; keep databases off the host.
+- `.env.example` holds a non-empty placeholder for every variable the compose files require (`${VAR:?}`), so `config` validates without a real `.env`. Never create or read `.env`.
 - Secret values are never written to a file or chat. Put placeholders and comments in `.env.example` and list each secret under "Needs from the user".
 - Rollback notes per release: previous image tag, how to restore, which data is not reversible.
 
