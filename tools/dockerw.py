@@ -6,6 +6,7 @@ and any path (mount, compose file, build context) outside the project root, and 
 project name so later cleanup can be scoped to this project's labels. Destructive commands are not
 available here.
 """
+import csv
 import hashlib
 import json
 import os
@@ -128,7 +129,16 @@ def _volume_reason(spec, root, cwd):
 def _mount_reason(spec, root, cwd):
     # Like docker: keys are case-insensitive, type is lower-cased, and the last of source/src wins.
     typ, src = "volume", ""
-    for kv in spec.split(","):
+    try:
+        if "\n" in spec or "\r" in spec:
+            raise csv.Error("newline in value")
+        fields = next(csv.reader([spec], skipinitialspace=False, strict=True), [])
+        # Python keeps a quote inside an unquoted field as a literal; Go's csv (Docker) rejects it. Refuse what Docker would.
+        if any('"' in f for f in fields):
+            raise csv.Error('stray quote in a field')
+    except csv.Error as e:
+        return f"unparseable --mount value ({e}): {spec!r}"
+    for kv in fields:
         key, eq, value = kv.partition("=")
         if not eq:
             continue
