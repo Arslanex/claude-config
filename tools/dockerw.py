@@ -74,6 +74,11 @@ def root_reason(root):
     root = Path(root).resolve()
     if root == Path(root.anchor) or root == Path.home().resolve():
         return f"project root is too broad ({root})"
+    allowed = _conf().get("allowed_roots")
+    if allowed:
+        bases = [Path(a).expanduser().resolve() for a in allowed]
+        if not any(root == b or b in root.parents for b in bases):
+            return f"project root {root} is not under an allowed root"
     return None
 
 
@@ -344,9 +349,151 @@ def cmd_clean(args):
     return rc
 
 
+GATED = {"up", "run", "build", "start", "restart"}
+KEEP_OPTS = {"-p", "--project-name", "--profile", "--ansi", "--progress", "--parallel"}
+
+
+def _split_compose(args):
+    """(options, subcommand, rest) of the arguments after 'compose'; options are (token, value-or-None)."""
+    opts, i = [], 0
+    while i < len(args) and args[i].startswith("-"):
+        tok = args[i]
+        opt, eq, _ = tok.partition("=")
+        if opt in COMPOSE_VALUE_OPTS and not eq:
+            opts.append((tok, args[i + 1] if i + 1 < len(args) else None))
+            i += 2
+        else:
+            opts.append((tok, None))
+            i += 1
+    sub = args[i] if i < len(args) else None
+    return opts, sub, args[i + 1:]
+
+
+def _flat(opts):
+    return [t for tok, val in opts for t in ((tok,) if val is None else (tok, val))]
+
+
+def _config(args, cwd):
+    r = _run(args, cwd=cwd)
+    if r.returncode != 0:
+        raise Refused("could not resolve the compose config: " + (r.stderr.strip()[:200] or "docker compose config failed"))
+    try:
+        cfg = json.loads(r.stdout)
+    except ValueError:
+        raise Refused("could not resolve the compose config: output is not JSON")
+    if not isinstance(cfg, dict):
+        raise Refused("could not resolve the compose config: unexpected output")
+    return cfg
+
+
+def validate_env_files(cfg, root, cwd):
+    root = Path(root).resolve()
+    for svc, spec in (cfg.get("services") or {}).items():
+        files = (spec or {}).get("env_file") or []
+        if isinstance(files, (str, dict)):
+            files = [files]
+        for f in files:
+            path = str(f.get("path") or "") if isinstance(f, dict) else str(f)
+            if path and not inside(path, root, cwd):
+                raise Refused(f"service {svc}: env_file outside the project: {path}")
+
+
+def _validate_build(where, build, root, cwd):
+    ctx = str(build.get("context") or ".")
+    if "://" in ctx or ctx.startswith("git@") or not inside(ctx, root, cwd):
+        raise Refused(f"{where}: build context outside the project: {ctx}")
+    dockerfile = str(build.get("dockerfile") or "")
+    if dockerfile.startswith("/") and not inside(dockerfile, root, cwd):
+        raise Refused(f"{where}: Dockerfile outside the project: {dockerfile}")
+    for key in ("ssh", "entitlements", "cache_to", "privileged"):
+        if build.get(key):
+            raise Refused(f"{where}: build.{key} is not allowed")
+    if build.get("network") == "host":
+        raise Refused(f"{where}: build.network host is not allowed")
+    for entry in build.get("cache_from") or []:
+        if "type=local" in str(entry):
+            raise Refused(f"{where}: local build cache is not allowed")
+    for key, value in (build.get("additional_contexts") or {}).items():
+        v = str(value)
+        if v.startswith("docker-image://"):
+            continue
+        if "://" in v or not inside(v, root, cwd):
+            raise Refused(f"{where}: additional build context outside the project: {v}")
+
+
+def validate_config(cfg, root, cwd):
+    """Raise Refused when a resolved compose config asks for more than the project may have."""
+    root = Path(root).resolve()
+    prefix = project_name(root) + "_"
+    for svc, spec in (cfg.get("services") or {}).items():
+        spec = spec or {}
+        where = f"service {svc}"
+        if spec.get("privileged"):
+            raise Refused(f"{where}: privileged is not allowed")
+        for key in ("cap_add", "devices", "security_opt", "device_cgroup_rules", "pid", "ipc", "uts",
+                    "userns_mode", "cgroup", "cgroup_parent", "provider"):
+            if spec.get(key):
+                raise Refused(f"{where}: {key} is not allowed")
+        mode = str(spec.get("network_mode") or "")
+        if mode == "host" or mode.startswith("container:"):
+            raise Refused(f"{where}: network_mode {mode} is not allowed")
+        if any(str(v).startswith("container:") for v in spec.get("volumes_from") or []):
+            raise Refused(f"{where}: volumes_from a container is not allowed")
+        for v in spec.get("volumes") or []:
+            if isinstance(v, str):
+                reason = _volume_reason(v, root, cwd)
+                if reason:
+                    raise Refused(f"{where}: {reason}")
+            elif isinstance(v, dict) and v.get("type") == "bind":
+                src = str(v.get("source") or "")
+                if not src or "docker.sock" in src or not inside(src, root, cwd):
+                    raise Refused(f"{where}: bind mount source outside the project: {src or '(empty)'}")
+        if isinstance(spec.get("build"), dict):
+            _validate_build(where, spec["build"], root, cwd)
+    for key, vol in (cfg.get("volumes") or {}).items():
+        vol = vol or {}
+        vname = str(vol.get("name") or key)
+        if not vname.startswith(prefix):
+            raise Refused(f"volume {key}: name must start with {prefix} (got {vname})")
+        if (vol.get("driver") or "local") != "local":
+            raise Refused(f"volume {key}: only the local driver is allowed")
+        device = (vol.get("driver_opts") or {}).get("device")
+        if device and not inside(str(device), root, cwd):
+            raise Refused(f"volume {key}: device outside the project: {device}")
+    for key, net in (cfg.get("networks") or {}).items():
+        nname = str((net or {}).get("name") or key)
+        if not nname.startswith(prefix):
+            raise Refused(f"network {key}: name must start with {prefix} (got {nname})")
+    for kind in ("secrets", "configs"):
+        for key, item in (cfg.get(kind) or {}).items():
+            item = item or {}
+            if item.get("file") and not inside(str(item["file"]), root, cwd):
+                raise Refused(f"{kind} {key}: file outside the project: {item['file']}")
+            if item.get("environment"):
+                raise Refused(f"{kind} {key}: reading a host environment variable is not allowed")
+
+
+def gate_compose(final, root, cwd):
+    """Return (reason, argv, stdin). Commands that start containers run the validated config from stdin."""
+    opts, sub, rest = _split_compose(final[1:])
+    if sub not in GATED:
+        return None, final, None
+    try:
+        everything = _flat(opts)
+        validate_env_files(_config(["compose", *everything, "config", "--no-env-resolution", "--format", "json"], cwd),
+                           root, cwd)
+        cfg = _config(["compose", *everything, "config", "--format", "json"], cwd)
+        validate_config(cfg, root, cwd)
+    except Refused as exc:
+        return str(exc), None, None
+    keep = _flat([(tok, val) for tok, val in opts if tok.partition("=")[0] in KEEP_OPTS])
+    return None, ["compose", *keep, "-f", "-", sub, *rest], json.dumps(cfg)
+
+
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
-    broad = root_reason(project_root())
+    root = project_root()
+    broad = root_reason(root)
     if broad:
         print(f"dockerw: refused: {broad}", file=sys.stderr)
         return 2
@@ -354,12 +501,17 @@ def main(argv=None):
         return cmd_ports(argv[1:])
     if argv[:1] == ["clean"]:
         return cmd_clean(argv[1:])
-    reason, final = check(argv, project_root(), Path.cwd())
+    reason, final = check(argv, root, Path.cwd())
+    stdin_data = None
+    if not reason and final and final[0] == "compose":
+        reason, final, stdin_data = gate_compose(final, root, Path.cwd())
     if reason:
         print(f"dockerw: refused: {reason}", file=sys.stderr)
         return 2
     docker = _docker()
-    os.execve(docker, [docker, *final], _env())
+    if stdin_data is None:
+        os.execve(docker, [docker, *final], _env())
+    return subprocess.run([docker, *final], input=stdin_data, text=True, env=_env()).returncode
 
 
 if __name__ == "__main__":

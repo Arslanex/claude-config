@@ -173,10 +173,10 @@ class TestEndToEnd(Base):
                               capture_output=True, text=True)
 
     def test_allowed_command_reaches_docker(self):
-        r = self.run_tool("compose", "up", "-d")
+        r = self.run_tool("compose", "ps")
         self.assertEqual(r.returncode, 0, r.stderr)
         name = self.mod.project_name(self.root)
-        self.assertEqual(self.log.read_text().split(), ["compose", "-p", name, "up", "-d"])
+        self.assertEqual(self.log.read_text().split(), ["compose", "-p", name, "ps"])
 
     def test_refused_command_never_reaches_docker(self):
         r = self.run_tool("run", "--privileged", "x")
