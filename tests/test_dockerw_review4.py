@@ -303,17 +303,72 @@ class TestPathUsedIsPathValidated(RevBase):
         self.assertEqual(src, str(real), "docker re-resolves the symlink after validation (swap race), not the checked path")
 
 
-class TestEnvFileRecheck(RevBase):
-    def test_second_resolution_env_files_are_validated_not_the_first_again(self):
-        # varsayım: the compose version used keeps env_file in the fully resolved output; gate_compose re-validates
-        # `unresolved` (line 545) instead of `cfg`, so a compose file swapped between the two calls is not re-checked.
-        first = {"services": {"app": {"env_file": [{"path": str(self.root / "ok.env")}]}}}
-        second = {"services": {"app": {"env_file": [{"path": str(self.outside / "secret.env")}],
-                                       "environment": {"S": "x"}}}}
+FAKE_SEQUENCE = """#!/bin/sh
+echo "$@" >> "$DOCKERW_LOG"
+case "$*" in
+  *--no-env-resolution*)
+    n=$(cat "$FAKE/n" 2>/dev/null || echo 0); n=$((n + 1)); echo $n > "$FAKE/n"
+    if [ -f "$FAKE/unresolved-$n.json" ]; then cat "$FAKE/unresolved-$n.json"; else cat "$FAKE/first.json"; fi
+    exit 0;;
+esac
+for a in "$@"; do
+  case "$a" in
+    config) cat "$FAKE/config.json"; exit 0;;
+    -) cat > "$FAKE/stdin.json"; exit 0;;
+  esac
+done
+exit 0
+"""
+
+
+class TestConfigChangedWhileResolving(RevBase):
+    """`config --format json` (resolved) has no env_file key: it inlines the file contents into environment. So env_file
+    paths can only be checked on the --no-env-resolution output, and that output must not change around the resolution."""
+
+    def setUp(self):
+        super().setUp()
+        self.fake.write_text(FAKE_SEQUENCE)
         (self.root / "ok.env").write_text("A=1\n")
-        self.set_config(second, first=first)
+        self.inside = {"services": {"app": {"image": "alpine", "env_file": [{"path": str(self.root / "ok.env")}]}}}
+        self.outside_env = {"services": {"app": {"image": "alpine", "env_file": [{"path": str(self.outside / "secret.env")}]}}}
+        # what the real resolved output looks like: contents inlined, no env_file key
+        (self.fake_dir / "config.json").write_text(json.dumps({"services": {"app": {"image": "alpine", "environment": {"A": "1"}}}}))
+
+    def unresolved(self, n, cfg):
+        (self.fake_dir / f"unresolved-{n}.json").write_text(json.dumps(cfg))
+
+    def calls(self):
+        return self.log.read_text().splitlines() if self.log.exists() else []
+
+    def test_config_swapped_between_the_two_reads_is_refused(self):
+        self.unresolved(1, self.inside)
+        self.unresolved(2, self.outside_env)  # the read after the resolution sees another compose file
         r = self.run_tool("compose", "up")
-        self.assertEqual(r.returncode, 2, r.stderr)
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+        self.assertIn("the compose config changed while it was being resolved", r.stderr)
+        self.assertFalse((self.fake_dir / "stdin.json").exists(), "the config was run anyway")
+        self.assertFalse(any(" -f - " in f" {c} " for c in self.calls()), self.calls())
+
+    def test_a_stable_config_still_runs(self):
+        for n in (1, 2):
+            self.unresolved(n, self.inside)
+        r = self.run_tool("compose", "up")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertTrue((self.fake_dir / "stdin.json").exists())
+
+    def test_the_unresolved_config_is_read_before_and_after_the_resolution(self):
+        for n in (1, 2):
+            self.unresolved(n, self.inside)
+        self.run_tool("compose", "up")
+        kinds = ["unresolved" if "--no-env-resolution" in c else "resolved" if " config " in f" {c} " else "run"
+                 for c in self.calls()]
+        self.assertEqual(kinds, ["unresolved", "resolved", "unresolved", "run"], self.calls())
+
+    def test_env_file_outside_the_project_in_the_first_read_is_still_refused(self):
+        self.unresolved(1, self.outside_env)
+        r = self.run_tool("compose", "up")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("env_file outside the project", r.stderr)
 
 
 class TestPortsReliability(RevBase):

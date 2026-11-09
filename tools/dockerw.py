@@ -664,7 +664,10 @@ def gate_compose(final, root, cwd):
         validate_env_files(unresolved, root, cwd)
         before = env_file_identity(unresolved, cwd)
         cfg = _config(["compose", *everything, "config", "--format", "json"], cwd)
-        validate_env_files(cfg, root, cwd)
+        # The resolved output has no env_file key (contents are inlined into environment), so env_file paths are only
+        # checked on the unresolved output; it must be unchanged after the resolution, or the checked paths were not the read ones.
+        if _config(["compose", *everything, "config", "--no-env-resolution", "--format", "json"], cwd) != unresolved:
+            raise Refused("the compose config changed while it was being resolved")
         if env_file_identity(unresolved, cwd) != before:
             raise Refused("an env_file changed while the compose config was being resolved")
         if sub in GATED:

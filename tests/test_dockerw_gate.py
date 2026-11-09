@@ -147,16 +147,17 @@ class TestGateEndToEnd(Base):
         r = self.run_tool("compose", "up", "-d")
         self.assertEqual(r.returncode, 0, r.stderr)
         calls = self.calls()
-        self.assertEqual(len(calls), 3, calls)
+        self.assertEqual(len(calls), 4, calls)
         self.assertIn("config --no-env-resolution --format json", calls[0])
         self.assertTrue(calls[1].endswith("config --format json"), calls[1])
-        self.assertEqual(calls[2], f"compose -p {self.name} -f - up -d")
+        self.assertIn("config --no-env-resolution --format json", calls[2])  # re-read after the resolution
+        self.assertEqual(calls[3], f"compose -p {self.name} -f - up -d")
         self.assertEqual(json.loads((self.fake_dir / "stdin.json").read_text()), cfg)
 
     def test_profiles_are_kept(self):
         self.write_config()
         self.run_tool("compose", "--profile", "dev", "up", "-d")
-        self.assertEqual(self.calls()[2], f"compose -p {self.name} --profile dev -f - up -d")
+        self.assertEqual(self.calls()[3], f"compose -p {self.name} --profile dev -f - up -d")
 
     def test_file_options_are_consumed_by_validation(self):
         self.write_config()
@@ -164,7 +165,8 @@ class TestGateEndToEnd(Base):
         self.run_tool("compose", "-f", "compose.yaml", "up", "-d")
         calls = self.calls()
         self.assertIn("-f compose.yaml", calls[0])
-        self.assertEqual(calls[2], f"compose -p {self.name} -f - up -d")
+        self.assertIn("-f compose.yaml", calls[2])
+        self.assertEqual(calls[3], f"compose -p {self.name} -f - up -d")
 
     def test_non_gated_commands_do_not_resolve_the_config(self):
         for argv in (("compose", "ps"), ("compose", "logs", "web"), ("compose", "stop")):
@@ -181,8 +183,8 @@ class TestGateEndToEnd(Base):
         r = self.run_tool("compose", "down")
         self.assertEqual(r.returncode, 0, r.stderr)
         calls = self.calls()
-        self.assertEqual(len(calls), 3, calls)
-        self.assertEqual(calls[2], f"compose -p {self.name} -f - down")
+        self.assertEqual(len(calls), 4, calls)
+        self.assertEqual(calls[3], f"compose -p {self.name} -f - down")
         self.assertEqual(json.loads((self.fake_dir / "stdin.json").read_text()), cfg)
         self.write_config(networks={"n": {"name": "victim_default"}})
         self.log.unlink()
