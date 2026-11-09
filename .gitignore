@@ -1,4 +1,7 @@
-.claude/settings.local.json
-CLAUDE.local.md
 __pycache__/
+.claude/.cc-writes/
+.claude/settings.local.json
+.DS_Store
 *.pyc
+**/.DS_Store
+CLAUDE.local.md
