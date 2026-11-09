@@ -6,8 +6,10 @@ and any path (mount, compose file, build context) outside the project root, and 
 project name so later cleanup can be scoped to this project's labels. Destructive commands are not
 available here.
 """
+import json
 import os
 import re
+import socket
 import subprocess
 import sys
 from pathlib import Path
@@ -177,8 +179,111 @@ def check(argv, root, cwd):
         return str(exc), None
 
 
+def _docker():
+    return os.environ.get("DOCKERW_DOCKER", "docker")
+
+
+def _run(args, cwd=None):
+    return subprocess.run([_docker(), *args], capture_output=True, text=True, cwd=cwd)
+
+
+def is_free(port):
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        s.bind(("0.0.0.0", port))
+        return True
+    except OSError:
+        return False
+    finally:
+        s.close()
+
+
+def published_ports(config):
+    """Sorted, de-duplicated (service, host port) pairs that a compose config publishes."""
+    out = set()
+    for svc, spec in (config.get("services") or {}).items():
+        for p in (spec or {}).get("ports") or []:
+            if isinstance(p, dict) and p.get("published"):
+                out.add((svc, int(p["published"])))
+    return sorted(out, key=lambda t: (t[1], t[0]))
+
+
+def port_status(port, name):
+    if is_free(port):
+        return "free"
+    r = _run(["ps", "--filter", f"publish={port}", "--format", '{{.Names}}|{{.Label "com.docker.compose.project"}}'])
+    rows = [l.strip().split("|", 1) for l in r.stdout.splitlines() if l.strip()] if r.returncode == 0 else []
+    if any(len(row) == 2 and row[1] == name for row in rows):
+        return "own"
+    return "other-container" if rows else "foreign-process"
+
+
+def suggest_port(port, taken):
+    for p in range(port + 1, min(port + 200, 65535) + 1):
+        if p not in taken and is_free(p):
+            return p
+    return None
+
+
+def cmd_ports(args):
+    root = project_root()
+    name = project_name(root)
+    r = _run(["compose", "-p", name, "config", "--format", "json"], cwd=root)
+    try:
+        if r.returncode != 0:
+            raise ValueError(r.stderr.strip()[:200] or "docker compose config failed")
+        config = json.loads(r.stdout)
+    except ValueError as exc:
+        print(f"dockerw: could not read the compose config: {exc}", file=sys.stderr)
+        return 1
+    ports = published_ports(config)
+    taken = {p for _, p in ports}
+    for svc, port in ports:
+        status = port_status(port, name)
+        line = f"PORT {port} {svc} {status}"
+        if status in ("other-container", "foreign-process"):
+            s = suggest_port(port, taken)
+            line += f" suggest={s}" if s else " suggest=none"
+            if s:
+                taken.add(s)
+        print(line)
+    if not ports:
+        print("PORTS none")
+    return 0
+
+
+def cmd_clean(args):
+    if any(a not in ("--apply", "--include-dangling") for a in args):
+        print("dockerw: clean accepts only --apply and --include-dangling", file=sys.stderr)
+        return 2
+    apply = "--apply" in args
+    name = project_name(project_root())
+    steps = [(f"stopped containers of project {name}",
+              ["container", "prune", "-f", "--filter", f"label=com.docker.compose.project={name}"])]
+    if "--include-dangling" in args:
+        steps.append(("dangling images (unreferenced, not project-labelled)", ["image", "prune", "-f"]))
+    rc = 0
+    for label, cmd in steps:
+        if not apply:
+            print(f"would run: {label}")
+            continue
+        r = _run(cmd)
+        if r.returncode == 0:
+            print(f"{label}: ok")
+        else:
+            rc = 1
+            print(f"{label}: failed: {r.stderr.strip()[:200]}")
+    if not apply:
+        print("dry run: nothing removed (use --apply)")
+    return rc
+
+
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
+    if argv[:1] == ["ports"]:
+        return cmd_ports(argv[1:])
+    if argv[:1] == ["clean"]:
+        return cmd_clean(argv[1:])
     reason, final = check(argv, project_root(), Path.cwd())
     if reason:
         print(f"dockerw: refused: {reason}", file=sys.stderr)
