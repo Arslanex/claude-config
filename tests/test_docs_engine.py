@@ -407,6 +407,31 @@ class StaleTests(TempRoot):
     def test_empty_docs(self):
         self.assertEqual(self.stale(), (0, "0 stale of 0 checked\n"))
 
+    def _historical_and_living(self):
+        write_doc(self.root, "t.md", id="T-0001")
+        write_doc(self.root, "h.md", id="HO-0001")
+        write_doc(self.root, "l.md", id="LOG-0001")
+        write_doc(self.root, "a.md", id="ADR-0001")
+        write_doc(self.root, "r.md", id="ARCH-0001")
+
+    def test_default_skips_historical_kinds(self):
+        self._historical_and_living()
+        code, out = self.stale()
+        self.assertEqual(code, 0)
+        for hid in ("T-0001", "HO-0001", "LOG-0001"):
+            self.assertNotIn(hid, out)
+        self.assertIn("STALE ADR-0001", out)
+        self.assertIn("STALE ARCH-0001", out)
+        self.assertEqual(out.splitlines()[-1], "2 stale of 2 checked")
+
+    def test_all_flag_scans_every_kind(self):
+        self._historical_and_living()
+        code, out = self.stale("--all")
+        self.assertEqual(code, 0)
+        for did in ("T-0001", "HO-0001", "LOG-0001", "ADR-0001", "ARCH-0001"):
+            self.assertIn(f"STALE {did}", out)
+        self.assertEqual(out.splitlines()[-1], "5 stale of 5 checked")
+
 
 if __name__ == "__main__":
     unittest.main()

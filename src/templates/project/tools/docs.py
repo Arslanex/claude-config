@@ -10,7 +10,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-DOCS_ENGINE_VERSION = 3
+DOCS_ENGINE_VERSION = 4
 
 REQUIRED = ("id", "title", "status", "area", "updated")
 STATUSES = ("draft", "accepted", "superseded", "archived")
@@ -538,6 +538,8 @@ def cmd_graph(args):
 # --------------------------------------------------------------------------
 
 STALE_STATUSES = ("draft", "accepted")
+# Living doc kinds are scanned by default; task/handoff/log are historical records (--all adds them).
+LIVING_PREFIXES = tuple(KINDS[k][0] for k in ("adr", "module", "domain", "plan"))
 
 
 def cmd_stale(args):
@@ -553,6 +555,8 @@ def cmd_stale(args):
             print(f"WARN  {d.rel}: {d.error}")
             continue
         if d.get("status") not in STALE_STATUSES:
+            continue
+        if not args.all and str(d.id).split("-")[0] not in LIVING_PREFIXES:
             continue
         checked += 1
         updated = d.get("updated")
@@ -590,8 +594,9 @@ def build_parser():
     p.set_defaults(func=cmd_lint)
     add("index", help="regenerate INDEX.md files").set_defaults(func=cmd_index)
     add("graph", help="regenerate the Mermaid dependency graph").set_defaults(func=cmd_graph)
-    p = add("stale", help="list draft/accepted docs not updated for N days (report only)")
+    p = add("stale", help="list draft/accepted living docs (ADR/ARCH/DOM/PLAN) not updated for N days (report only)")
     p.add_argument("--days", type=int, default=90, help="age threshold in days (default: 90)")
+    p.add_argument("--all", action="store_true", help="also scan task/handoff/log docs (historical records)")
     p.add_argument("--today", help="reference date YYYY-MM-DD (default: real today)")
     p.set_defaults(func=cmd_stale)
     return parser
