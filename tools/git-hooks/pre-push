@@ -1,0 +1,17 @@
+#!/bin/sh
+# Push oncesi kapi: ajanlarin ve bakim dongusunun kullandigi ayni `make check`.
+# Kirmizi ise push engellenir. Bilincli atlamak icin: git push --no-verify
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_PREFIX GIT_OBJECT_DIRECTORY GIT_COMMON_DIR
+root="$(git rev-parse --show-toplevel)" || exit 1
+cd "$root" || exit 1
+log="$(mktemp "${TMPDIR:-/tmp}/pre-push.XXXXXX")" || exit 1
+[ -f "$log" ] || exit 1
+echo "pre-push: make check calisiyor ..." >&2
+if make check > "$log" 2>&1; then
+  echo "pre-push: make check gecti" >&2
+  rm -f "$log"
+  exit 0
+fi
+tail -20 "$log" >&2
+echo "pre-push: make check BASARISIZ, push engellendi (log: $log). Bilincli atlamak icin: git push --no-verify" >&2
+exit 1

@@ -9,6 +9,7 @@ help:
 	@echo "  check  currently the same as test (lint will be added later)"
 	@echo "  agent-eval  run the agent regression harness (calls claude, costs tokens)"
 	@echo "  live-test   tests that need a live claude and network (not part of check)"
+	@echo "  hooks       enable the pre-push gate (runs make check before every push)"
 	@echo "  help   show this help"
 
 # A failing test file never stops the others; failures are collected and listed at the end.
@@ -44,3 +45,8 @@ agent-eval:
 .PHONY: live-test
 live-test:
 	bash tests/live/sandbox-secrets.sh
+
+.PHONY: hooks
+hooks:
+	git config core.hooksPath tools/git-hooks
+	@echo "pre-push gate active (core.hooksPath = tools/git-hooks)"
