@@ -6,6 +6,7 @@ and any path (mount, compose file, build context) outside the project root, and 
 project name so later cleanup can be scoped to this project's labels. Destructive commands are not
 available here.
 """
+import hashlib
 import json
 import os
 import re
@@ -53,8 +54,13 @@ def _docker():
     raise SystemExit('dockerw: docker binary not found; set "docker" in dockerw.conf.json next to this script')
 
 
+# DOCKERW_LOG and FAKE only carry paths for the fake docker binary in the test suite.
+ENV_ALLOW = {"HOME", "USER", "LOGNAME", "LANG", "TERM", "TMPDIR", "TZ", "DOCKERW_LOG", "FAKE"}
+
+
 def _env():
-    env = {k: v for k, v in os.environ.items() if not k.startswith(("DOCKER_", "COMPOSE_", "BUILDKIT_", "BUILDX_"))}
+    """Allow-list: ambient credentials (SSH agent, cloud and token variables) never reach docker."""
+    env = {k: v for k, v in os.environ.items() if k in ENV_ALLOW or k.startswith("LC_")}
     env["PATH"] = SAFE_PATH
     return env
 
@@ -77,13 +83,17 @@ def root_reason(root):
     allowed = _conf().get("allowed_roots")
     if allowed:
         bases = [Path(a).expanduser().resolve() for a in allowed]
-        if not any(root == b or b in root.parents for b in bases):
+        if root in bases:
+            return f"project root {root} is an allowed root itself; use a directory below it"
+        if not any(b in root.parents for b in bases):
             return f"project root {root} is not under an allowed root"
     return None
 
 
 def project_name(root):
-    return re.sub(r"[^a-z0-9_-]", "", Path(root).name.lower()).lstrip("-_") or "project"
+    """Sanitised basename plus a short hash of the full path, so same-named directories get different projects."""
+    base = re.sub(r"[^a-z0-9_-]", "", Path(root).name.lower()).lstrip("-_") or "project"
+    return f"{base}-{hashlib.sha256(str(Path(root).resolve()).encode()).hexdigest()[:8]}"
 
 
 def inside(path, root, cwd):
@@ -92,6 +102,11 @@ def inside(path, root, cwd):
         p = Path(cwd) / p
     p = p.resolve()
     return p == root or root in p.parents
+
+
+def _resolve(path, cwd):
+    p = Path(os.path.expanduser(path))
+    return (p if p.is_absolute() else Path(cwd) / p).resolve()
 
 
 def _host_path_reason(src, root, cwd):
@@ -111,9 +126,17 @@ def _volume_reason(spec, root, cwd):
 
 
 def _mount_reason(spec, root, cwd):
-    fields = dict(kv.split("=", 1) for kv in spec.split(",") if "=" in kv)
-    typ = fields.get("type", "volume")
-    src = fields.get("source") or fields.get("src") or ""
+    # Like docker: keys are case-insensitive, type is lower-cased, and the last of source/src wins.
+    typ, src = "volume", ""
+    for kv in spec.split(","):
+        key, eq, value = kv.partition("=")
+        if not eq:
+            continue
+        key = key.strip().lower()
+        if key == "type":
+            typ = value.strip().lower()
+        elif key in ("source", "src"):
+            src = value
     if typ == "bind":
         if not src:
             return "bind mount without a source"
@@ -216,6 +239,10 @@ def _compose(args, root, cwd):
     if sub == "down" and any(t in ("-v", "--volumes", "--rmi") or t.startswith(("--rmi=", "--volumes="))
                              for t in after):
         raise Refused("down with volumes or images removes data; ask the user or use the labelled cleanup")
+    if sub == "build":
+        for t in after:
+            if t.partition("=")[0] in ("--ssh", "--push"):
+                raise Refused(f"{t.partition('=')[0]} is not allowed: build must not use the SSH agent or push images")
     scan(args, root, cwd)
     return ["compose", *([] if has_project else ["-p", name]), *args]
 
@@ -302,7 +329,7 @@ def cmd_ports(args):
     r = _run(["compose", "-p", name, "config", "--format", "json"], cwd=root)
     try:
         if r.returncode != 0:
-            raise ValueError(r.stderr.strip()[:200] or "docker compose config failed")
+            raise ValueError("docker compose config failed")
         config = json.loads(r.stdout)
     except ValueError as exc:
         print(f"dockerw: could not read the compose config: {exc}", file=sys.stderr)
@@ -350,6 +377,7 @@ def cmd_clean(args):
 
 
 GATED = {"up", "run", "build", "start", "restart"}
+ENV_CHECKED = {"config"}  # printing the config reads env_files, so they are checked, but the full policy does not apply
 KEEP_OPTS = {"-p", "--project-name", "--profile", "--ansi", "--progress", "--parallel"}
 
 
@@ -386,16 +414,36 @@ def _config(args, cwd):
     return cfg
 
 
-def validate_env_files(cfg, root, cwd):
-    root = Path(root).resolve()
+def _env_file_paths(cfg):
     for svc, spec in (cfg.get("services") or {}).items():
         files = (spec or {}).get("env_file") or []
         if isinstance(files, (str, dict)):
             files = [files]
         for f in files:
             path = str(f.get("path") or "") if isinstance(f, dict) else str(f)
-            if path and not inside(path, root, cwd):
-                raise Refused(f"service {svc}: env_file outside the project: {path}")
+            if path:
+                yield svc, path
+
+
+def validate_env_files(cfg, root, cwd):
+    root = Path(root).resolve()
+    for svc, path in _env_file_paths(cfg):
+        if not inside(path, root, cwd):
+            raise Refused(f"service {svc}: env_file outside the project: {path}")
+
+
+def env_file_identity(cfg, cwd):
+    """What each env_file points at right now: resolved path plus device and inode (None if missing)."""
+    ident = []
+    for _, path in _env_file_paths(cfg):
+        p = Path(os.path.expanduser(path))
+        p = (p if p.is_absolute() else Path(cwd) / p).resolve()
+        try:
+            st = p.stat()
+            ident.append((str(p), st.st_dev, st.st_ino))
+        except OSError:
+            ident.append((str(p), None, None))
+    return ident
 
 
 def _validate_build(where, build, root, cwd):
@@ -403,7 +451,7 @@ def _validate_build(where, build, root, cwd):
     if "://" in ctx or ctx.startswith("git@") or not inside(ctx, root, cwd):
         raise Refused(f"{where}: build context outside the project: {ctx}")
     dockerfile = str(build.get("dockerfile") or "")
-    if dockerfile.startswith("/") and not inside(dockerfile, root, cwd):
+    if dockerfile and not inside(dockerfile, root, _resolve(ctx, cwd)):
         raise Refused(f"{where}: Dockerfile outside the project: {dockerfile}")
     for key in ("ssh", "entitlements", "cache_to", "privileged"):
         if build.get(key):
@@ -453,8 +501,8 @@ def validate_config(cfg, root, cwd):
     for key, vol in (cfg.get("volumes") or {}).items():
         vol = vol or {}
         vname = str(vol.get("name") or key)
-        if not vname.startswith(prefix):
-            raise Refused(f"volume {key}: name must start with {prefix} (got {vname})")
+        if vname != prefix + key:
+            raise Refused(f"volume {key}: name must be exactly {prefix}{key} (got {vname})")
         if (vol.get("driver") or "local") != "local":
             raise Refused(f"volume {key}: only the local driver is allowed")
         device = (vol.get("driver_opts") or {}).get("device")
@@ -476,14 +524,19 @@ def validate_config(cfg, root, cwd):
 def gate_compose(final, root, cwd):
     """Return (reason, argv, stdin). Commands that start containers run the validated config from stdin."""
     opts, sub, rest = _split_compose(final[1:])
-    if sub not in GATED:
+    if sub not in GATED | ENV_CHECKED:
         return None, final, None
     try:
         everything = _flat(opts)
-        validate_env_files(_config(["compose", *everything, "config", "--no-env-resolution", "--format", "json"], cwd),
-                           root, cwd)
+        unresolved = _config(["compose", *everything, "config", "--no-env-resolution", "--format", "json"], cwd)
+        validate_env_files(unresolved, root, cwd)
+        before = env_file_identity(unresolved, cwd)
         cfg = _config(["compose", *everything, "config", "--format", "json"], cwd)
-        validate_config(cfg, root, cwd)
+        validate_env_files(unresolved, root, cwd)
+        if env_file_identity(unresolved, cwd) != before:
+            raise Refused("an env_file changed while the compose config was being resolved")
+        if sub in GATED:
+            validate_config(cfg, root, cwd)
     except Refused as exc:
         return str(exc), None, None
     keep = _flat([(tok, val) for tok, val in opts if tok.partition("=")[0] in KEEP_OPTS])
