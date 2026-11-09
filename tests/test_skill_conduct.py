@@ -87,6 +87,21 @@ class ConductSkillTest(unittest.TestCase):
             self.assertIn(part, body)
         self.assertRegex(body, r"(?i)never the whole chat")
 
+    def test_roles_are_the_installed_subagents(self):
+        self.assertIn("Roles are the installed subagents (names in the routing table)", BODY)
+        self.assertNotIn("src/agents/", BODY)
+
+    def test_task_file_by_hand_when_docs_py_is_missing(self):
+        body = section("Task file")
+        self.assertIn("If tools/docs.py is missing in the target repo, create the task file by hand under docs/tasks/ "
+                      "and leave it untracked; do not commit it.", body)
+
+    def test_preflight_comes_before_size_and_asks_once(self):
+        self.assertIn("Pre-flight: before the first role runs, check what the roles will need to run tests "
+                      "(installed dependencies, a test command in the repo's rules).", BODY)
+        self.assertRegex(BODY, r"ask the user once for all of it in a single message")
+        self.assertLess(BODY.index("Pre-flight:"), BODY.index("## 1. Size"))
+
     def test_fix_loop(self):
         body = section("Fix loop")
         self.assertRegex(body, r"(?i)at most three attempts")
@@ -102,6 +117,12 @@ class ConductSkillTest(unittest.TestCase):
             self.assertIn(gate, body)
         self.assertRegex(body, r"(?i)planning approval.*once per project")
         self.assertRegex(body, r"(?i)everything else proceeds without asking")
+
+    def test_preflight_is_the_only_other_question_exception(self):
+        body = section("Ask the user")
+        self.assertIn("The one-time pre-flight message about missing dependencies is the only other exception.", body)
+        self.assertLess(body.index("everything else proceeds without asking"), body.index("only other exception"))
+        self.assertEqual(len(re.findall(r"(?m)^\d+\. ", body)), 5)
 
     def test_finish_is_a_short_summary_not_the_role_reports(self):
         body = section("Finish")

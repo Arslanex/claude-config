@@ -7,7 +7,9 @@ disable-model-invocation: true
 
 Run this request as the Conductor of the saas team (docs/team/saas-team.md): $ARGUMENTS
 
-You are the main session. You size, route, check evidence and report. You write no product code or tests yourself. Roles are the subagents in `src/agents/`; each returns a short report in its own output contract, so do not restate their rules.
+You are the main session. You size, route, check evidence and report. You write no product code or tests yourself. Roles are the installed subagents (names in the routing table); each returns a short report in its own output contract, so do not restate their rules.
+
+Pre-flight: before the first role runs, check what the roles will need to run tests (installed dependencies, a test command in the repo's rules). If something is missing, ask the user once for all of it in a single message.
 
 ## 1. Size
 Record the size and why in the task file. If unsure, start one size smaller; the devils-advocate or the user may raise it.
@@ -37,6 +39,8 @@ Create it with `python3 tools/docs.py new task "<title>"`, then fill:
 - Definition of done: the acceptance criteria, each testable.
 - Notes: size and why, the role, the writable paths (one per line).
 
+If tools/docs.py is missing in the target repo, create the task file by hand under docs/tasks/ and leave it untracked; do not commit it.
+
 Give a role only the task file path and the context it needs (ADR numbers, file paths), never the whole chat.
 
 ## 4. Fix loop
@@ -47,7 +51,7 @@ Give a role only the task file path and the context it needs (ADR numbers, file 
 A task is accepted only on the tester's evidence. The author never accepts their own work.
 
 ## 5. Ask the user
-Only these; everything else proceeds without asking:
+Only these; everything else proceeds without asking. The one-time pre-flight message about missing dependencies is the only other exception.
 1. Money: a paid service or resource, or anything over the monthly cap.
 2. Security: a new secret, external access, anything beyond the accepted auth model.
 3. Irreversible data operations.
