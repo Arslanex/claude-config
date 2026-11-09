@@ -113,6 +113,61 @@ def check_installed(data, skills_dir):
     return out
 
 
+def _fetch(source, ref, repo):
+    def run(*a):
+        return subprocess.run(a, check=True, capture_output=True, text=True)
+    run("git", "clone", "-q", "--depth", "1", source, str(repo))
+    head = run("git", "-C", str(repo), "rev-parse", "HEAD").stdout.strip()
+    if head != ref:
+        run("git", "-C", str(repo), "fetch", "-q", "--depth", "1", "origin", ref)
+        run("git", "-C", str(repo), "checkout", "-q", ref)
+
+
+def install(data, skills_dir, apply=False):
+    """Add approved skills from the lock to skills_dir. Add-only: existing directories are never touched."""
+    lines, problems = [], []
+    for e in data.get("skills", []):
+        if e.get("kind") != "skill" or e.get("status") != "approved":
+            continue
+        name = e["name"]
+        if not re.fullmatch(r"[a-z0-9][a-z0-9._-]*", name):
+            problems.append(f"{name}: unsafe skill name, not installed")
+            continue
+        dest = Path(skills_dir) / name
+        if dest.exists():
+            lines.append(f"exists    {name} (left untouched)")
+            continue
+        tmp = Path(tempfile.mkdtemp(prefix="skillsinst."))
+        try:
+            try:
+                _fetch(e["source"], e["ref"], tmp / "r")
+            except subprocess.CalledProcessError as exc:
+                problems.append(f"{name}: fetch failed: {(exc.stderr or '').strip()[:120]}")
+                continue
+            src = tmp / "r" / e.get("subpath", "")
+            if not src.is_dir():
+                problems.append(f"{name}: subpath not found: {e.get('subpath')}")
+                continue
+            if tree_hash(src) != e["sha256"]:
+                problems.append(f"{name}: content differs from the locked hash, not installed")
+                continue
+            if not (src / "SKILL.md").is_file():
+                lines.append(f"skipped   {name} (no SKILL.md at the subpath root; fix the subpath or install it as an agent)")
+                continue
+            if not apply:
+                lines.append(f"would install {name}")
+                continue
+            shutil.copytree(src, dest, ignore=shutil.ignore_patterns(".git"))
+            if tree_hash(dest) != e["sha256"]:
+                shutil.rmtree(dest)
+                problems.append(f"{name}: installed copy failed hash check, removed")
+                continue
+            lines.append(f"installed {name}")
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+    return lines, problems
+
+
 def load(path):
     return json.loads(Path(path).read_text())
 
@@ -135,6 +190,10 @@ def main(argv=None):
     a.add_argument("--by", required=True)
     a.add_argument("--date", default=datetime.date.today().isoformat())
     a.add_argument("--lock", default=str(LOCK))
+    i = sub.add_parser("install")
+    i.add_argument("--to", default=str(Path.home() / ".claude" / "skills"))
+    i.add_argument("--apply", action="store_true", help="really install (default is a dry run)")
+    i.add_argument("--lock", default=str(LOCK))
     args = ap.parse_args(argv)
     data = load(args.lock)
     if args.cmd == "verify":
@@ -153,6 +212,20 @@ def main(argv=None):
         save(args.lock, data)
         print(f"pinned {e['name']} {e['ref'][:12]} {e['sha256'][:12]}")
         return 0
+    if args.cmd == "install":
+        problems = validate(data)
+        if problems:
+            for line in problems:
+                print("FAIL:", line)
+            return 1
+        lines, problems = install(data, args.to, args.apply)
+        for line in lines:
+            print(line)
+        for line in problems:
+            print("FAIL:", line)
+        if not args.apply:
+            print("dry run: nothing installed (use --apply)")
+        return 1 if problems else 0
     e = find(data, args.name)
     if e["status"] != "pinned":
         raise SystemExit(f"{args.name}: pin it first (status is {e['status']})")

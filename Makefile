@@ -53,3 +53,7 @@ hooks:
 
 skills-verify:
 	python3 tools/skills_lock.py verify --installed $(HOME)/.claude/skills
+
+.PHONY: skills-install
+skills-install:
+	python3 tools/skills_lock.py install $(ARGS)
