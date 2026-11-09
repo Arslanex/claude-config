@@ -82,6 +82,13 @@ class Base(unittest.TestCase):
 
 
 class TestPorts(Base):
+    def setUp(self):
+        super().setUp()
+        try:
+            free_port()
+        except OSError:
+            self.skipTest("local port binding is not permitted here (sandbox)")
+
     def test_free_port(self):
         p = free_port()
         self.config({"web": p})

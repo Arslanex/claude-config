@@ -59,8 +59,8 @@ CMD_RULES = [
      r"(?:(?:npm|pnpm|yarn|bun)\s+publish|twine\s+upload|cargo\s+publish|docker\s+push)\b"),
     ("money", "stripe CLI can touch real payments",
      r"stripe(?=\s|$)(?!\s+(?:listen|logs|--version|version|help|login)\b)"),
-    ("docker", "raw docker is not allowed for agents",
-     r"docker(?:-compose)?\b"),
+    ("docker", "raw container CLIs are not allowed for agents",
+     r"(?:docker(?:-compose)?|podman|nerdctl|colima|orbctl)\b"),
 ]
 
 # Rules matched anywhere in the arguments of any command that is not a data

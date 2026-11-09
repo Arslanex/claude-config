@@ -51,7 +51,7 @@ class Base(unittest.TestCase):
 
 class TestVerbs(Base):
     def test_read_only_and_build_commands_allowed(self):
-        for argv in (["ps"], ["images"], ["logs", "-f", "web"], ["inspect", "x"], ["version"],
+        for argv in (["ps"], ["images"], ["version"],
                      ["info"], ["system", "df"], ["build", "."], ["build", "-f", "Dockerfile", "."],
                      ["build", "-t", "x", "--build-arg", "A=1", "."]):
             with self.subTest(argv=argv):
@@ -59,7 +59,7 @@ class TestVerbs(Base):
 
     def test_other_verbs_refused(self):
         for verb in ("run", "rm", "rmi", "kill", "stop", "exec", "cp", "login", "push", "save",
-                     "volume", "network", "container", "image", "builder", "buildx"):
+                     "volume", "network", "container", "image", "builder", "buildx", "logs", "inspect"):
             with self.subTest(verb=verb):
                 self.refused(verb, "x")
 
@@ -92,7 +92,7 @@ class TestFlags(Base):
 class TestPaths(Base):
     def test_mounts_inside_project_allowed(self):
         self.allowed("compose", "run", "-v", "./data:/d", "web")
-        self.allowed("compose", "run", "-v", "named:/d", "web")
+        self.allowed("compose", "run", "-v", f"{self.mod.project_name(self.root)}_data:/d", "web")
         self.allowed("compose", "run", "--mount", "type=bind,source=./data,target=/d", "web")
         self.allowed("compose", "run", "-v", f"{self.root}/data:/d", "web")
 
@@ -100,6 +100,7 @@ class TestPaths(Base):
         self.refused("compose", "run", "-v", "/etc:/e", "web")
         self.refused("compose", "run", "-v", "../x:/e", "web")
         self.refused("compose", "run", "-v", "~/.ssh:/e", "web")
+        self.refused("compose", "run", "-v", "othervol:/e", "web")
         self.refused("compose", "run", "--mount", "type=bind,source=/etc,target=/e", "web")
         self.refused("compose", "run", "--mount", "type=bind,target=/e", "web")
 

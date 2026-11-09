@@ -18,7 +18,8 @@ class TestRawDocker(unittest.TestCase):
         for cmd in ("docker ps", "docker compose up -d", "docker-compose up", "docker run --privileged x",
                     "docker system prune -a --volumes -f", "/usr/local/bin/docker ps", "env FOO=1 docker ps",
                     'bash -c "docker ps"', "echo hi && docker ps", "X=$(docker ps -q)",
-                    "echo x | xargs docker rm", "timeout 5 docker logs web"):
+                    "echo x | xargs docker rm", "timeout 5 docker logs web", "podman ps", "nerdctl run x",
+                    "colima status", "orbctl list"):
             with self.subTest(cmd=cmd):
                 r = run_guard(cmd)
                 self.assertEqual(r.returncode, 2, r.stderr)

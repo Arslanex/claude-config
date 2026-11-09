@@ -14,7 +14,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-READ_ONLY = {"ps", "images", "logs", "inspect", "version", "info"}
+READ_ONLY = {"ps", "images", "version", "info"}
 COMPOSE_SUBS = {"up", "down", "build", "ps", "logs", "config", "pull", "restart", "stop", "start",
                 "exec", "run", "images", "top", "port"}
 COMPOSE_VALUE_OPTS = {"-f", "--file", "-p", "--project-name", "--profile", "--env-file",
@@ -93,8 +93,11 @@ def _host_path_reason(src, root, cwd):
     if not src:
         return None
     is_host_path = src.startswith(("/", "~", ".")) or "/" in src
-    if is_host_path and not inside(src, root, cwd):
-        return f"mount source outside the project: {src}"
+    if is_host_path:
+        return None if inside(src, root, cwd) else f"mount source outside the project: {src}"
+    prefix = project_name(root) + "_"
+    if not src.startswith(prefix):
+        return f"named volume must belong to this project (start with {prefix}): {src}"
     return None
 
 
@@ -104,12 +107,15 @@ def _volume_reason(spec, root, cwd):
 
 def _mount_reason(spec, root, cwd):
     fields = dict(kv.split("=", 1) for kv in spec.split(",") if "=" in kv)
-    if fields.get("type", "volume") != "bind":
-        return None
+    typ = fields.get("type", "volume")
     src = fields.get("source") or fields.get("src") or ""
-    if not src:
-        return "bind mount without a source"
-    return _host_path_reason(src, root, cwd)
+    if typ == "bind":
+        if not src:
+            return "bind mount without a source"
+        return _host_path_reason(src, root, cwd)
+    if typ == "volume" and src:
+        return _host_path_reason(src, root, cwd)
+    return None
 
 
 def scan(tokens, root, cwd):
@@ -117,6 +123,8 @@ def scan(tokens, root, cwd):
     for i, tok in enumerate(tokens):
         if "docker.sock" in tok:
             raise Refused("the Docker socket cannot be used")
+        if tok.startswith("-") and not tok.startswith("--") and len(tok) > 2:
+            raise Refused(f"combined or attached short option {tok!r} is not allowed; write each option separately")
         name, _, val = tok.partition("=")
         nxt = tokens[i + 1] if i + 1 < len(tokens) else ""
         if name in DENY_FLAGS:
@@ -134,23 +142,37 @@ def scan(tokens, root, cwd):
             raise Refused(reason)
 
 
+BUILD_VALUE_FLAGS = {"-t", "--tag", "-f", "--file", "--build-arg", "--target", "--label", "--progress", "--platform"}
+BUILD_BOOL_FLAGS = {"--no-cache", "--pull", "-q", "--quiet"}
+
+
 def _build(rest, root, cwd):
     scan(rest, root, cwd)
-    i = 0
+    positional, i = [], 0
     while i < len(rest):
-        name, eq, val = rest[i].partition("=")
-        if name in ("-f", "--file"):
+        tok = rest[i]
+        if not tok.startswith("-"):
+            positional.append(tok)
+            i += 1
+            continue
+        name, eq, val = tok.partition("=")
+        if name in BUILD_BOOL_FLAGS and not eq:
+            i += 1
+            continue
+        if name in BUILD_VALUE_FLAGS:
             if not eq:
                 if i + 1 >= len(rest):
                     raise Refused(f"{name} needs a value")
                 val = rest[i + 1]
                 i += 1
-            if not inside(val, root, cwd):
+            if name in ("-f", "--file") and not inside(val, root, cwd):
                 raise Refused(f"Dockerfile outside the project: {val}")
-        i += 1
-    if not rest or rest[-1].startswith("-"):
-        raise Refused("build needs a context path as the last argument")
-    ctx = rest[-1]
+            i += 1
+            continue
+        raise Refused(f"build option not allowed: {tok}")
+    if len(positional) != 1:
+        raise Refused("build needs exactly one context path")
+    ctx = positional[0]
     if "://" in ctx or ctx.startswith("git@") or not inside(ctx, root, cwd):
         raise Refused(f"build context outside the project: {ctx}")
     return ["build", *rest]
@@ -181,6 +203,11 @@ def _compose(args, root, cwd):
     if sub is None or sub not in COMPOSE_SUBS:
         raise Refused(f"compose subcommand not allowed: {sub or '(none)'}")
     after = args[i + 1:]
+    for t in after:
+        opt = t.partition("=")[0]
+        if (opt in ("--file", "--env-file", "--project-directory", "--project-name")
+                or (opt == "-f" and sub != "logs") or (opt == "-p" and sub != "run")):
+            raise Refused(f"{opt} must come before the compose subcommand")
     if sub == "down" and any(t in ("-v", "--volumes", "--rmi") or t.startswith(("--rmi=", "--volumes="))
                              for t in after):
         raise Refused("down with volumes or images removes data; ask the user or use the labelled cleanup")
@@ -240,7 +267,10 @@ def published_ports(config):
     for svc, spec in (config.get("services") or {}).items():
         for p in (spec or {}).get("ports") or []:
             if isinstance(p, dict) and p.get("published"):
-                out.add((svc, int(p["published"])))
+                try:
+                    out.add((svc, int(p["published"])))
+                except (TypeError, ValueError):
+                    continue
     return sorted(out, key=lambda t: (t[1], t[0]))
 
 
