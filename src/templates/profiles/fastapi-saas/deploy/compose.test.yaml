@@ -1,15 +1,46 @@
-# Entegrasyon test stack'i: yalniz postgres ve redis. Testler host'ta calisir.
+# Entegrasyon test stack'i: postgres ve redis; testler host'ta calisir.
+# Arayuz e2e (profil e2e): api sahte worker'larla ve Playwright konteyneri. Testler hicbir zaman gercek servis cagirmaz.
 services:
   postgres:
     environment:
       POSTGRES_USER: test
       POSTGRES_PASSWORD: test
       POSTGRES_DB: test
-    ports: ["55463:5432"]
+    ports: ["127.0.0.1:55463:5432"]
     tmpfs: ["/var/lib/postgresql/data"]
   redis:
-    ports: ["56410:6379"]
+    ports: ["127.0.0.1:56410:6379"]
+    # The redis image declares a volume at /data; tmpfs stops each run from leaving an anonymous one.
+    tmpfs: ["/data"]
   api:
-    profiles: ["never"]
+    profiles: ["e2e"]
+    environment:
+      DATABASE_URL: postgresql+asyncpg://test:test@postgres:5432/test
+      WORKER_MODE: fake
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
   worker:
     profiles: ["never"]
+  # Playwright surumu frontend/package.json icindeki @playwright/test ile ayni olur (tam surum, latest degil).
+  # frontend/ salt okunur baglanir; node_modules adli birimde, sonuclar ve ekran goruntuleri frontend/e2e-results altinda.
+  # frontend/e2e/playwright.config.ts uygulamayi konteyner icinde ayaga kaldirir (webServer) ve API'yi E2E_API_URL'den okur.
+  e2e:
+    image: mcr.microsoft.com/playwright:v1.64.1-noble
+    profiles: ["e2e"]
+    working_dir: /app
+    command: ["sh", "-c", "npm ci && npx playwright test --config e2e/playwright.config.ts --output /results"]
+    environment:
+      CI: "1"
+      E2E_API_URL: http://api:8000
+    volumes:
+      - ../frontend:/app:ro
+      - e2e_node_modules:/app/node_modules
+      - ../frontend/e2e-results:/results
+    depends_on:
+      api:
+        condition: service_healthy
+volumes:
+  e2e_node_modules:

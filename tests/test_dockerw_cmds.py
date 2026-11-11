@@ -184,11 +184,12 @@ class TestClean(Base):
         self.assertIn("dry run", r.stdout)
         self.assertEqual(self.calls(), "")
 
-    def test_apply_prunes_only_this_projects_containers(self):
+    def test_apply_prunes_only_this_projects_containers_and_dangling_images(self):
         r = self.run_tool("clean", "--apply")
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertEqual(self.calls().strip(),
-                         f"container prune -f --filter label=com.docker.compose.project={self.name}")
+        self.assertEqual(self.calls().strip().splitlines(),
+                         [f"container prune -f --filter label=com.docker.compose.project={self.name}",
+                          f"image prune -f --filter label=com.docker.compose.project={self.name}"])
 
     def test_include_dangling_is_not_supported(self):
         r = self.run_tool("clean", "--apply", "--include-dangling")
@@ -203,7 +204,7 @@ class TestClean(Base):
         lines = self.calls().strip().splitlines()
         for line in lines:
             self.assertIn(f"label=com.docker.compose.project={self.name}", line)
-        for bad in ("image", "-a", "--all", "volume", "system", "builder", "network"):
+        for bad in ("-a", "--all", "volume", "system", "builder", "network"):
             self.assertFalse(any(bad in l.split() for l in lines), bad)
 
     def test_unknown_flag_refused(self):

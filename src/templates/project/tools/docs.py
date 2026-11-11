@@ -10,7 +10,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-DOCS_ENGINE_VERSION = 5
+DOCS_ENGINE_VERSION = 6
 
 REQUIRED = ("id", "title", "status", "area", "updated")
 STATUSES = ("draft", "accepted", "superseded", "archived")
@@ -32,7 +32,7 @@ AREAS = {
     "decisions": ("02-decisions", ("ADR",)),
     "domains": ("03-domains", ("DOM",)),
     "operations": ("04-operations", ("RUN",)),
-    "work": ("05-work", ("T", "PLAN", "HO", "LOG")),
+    "work": ("05-work", ("T", "PLAN", "HO", "LOG", "BRIEF")),
     "archive": ("99-archive", ()),
 }
 PREFIX_DIR = {p: folder for folder, prefixes in AREAS.values() for p in prefixes}
@@ -50,6 +50,10 @@ KINDS = {
     "handoff": ("HO", "handoffs"),
     "log": ("LOG", "log"),
     "runbook": ("RUN", ""),
+    "brief": ("BRIEF", "plans"),
+    "threat": ("ARCH", "security"),
+    "perf": ("ARCH", "performance"),
+    "quality": ("PLAN", "plans/quality"),
 }
 
 BODIES = {
@@ -61,6 +65,14 @@ BODIES = {
     "handoff": "## State\n\n## Next steps\n\n## Gotchas\n",
     "log": "## Summary\n\n## Details\n",
     "runbook": "## Purpose\n\n## Preconditions\n\n## Steps\n\n## Rollback\n\n## Verification\n",
+    "brief": ("## 1. Ürün özeti\n\n## 2. Kapsam dışı\n\n## 3. Stack\n\n## 4. Dağıtım ve ölçek\n\n"
+              "## 5. Özellikler\n\n## 6. Kalite beklentileri\n\n## 7. Entegrasyonlar\n\n"
+              "## 8. Kısıtlar\n\n## 9. Özel notlar\n"),
+    "threat": ("## Trust boundaries\n\n## Data classification\n\n## STRIDE per boundary\n\n"
+               "## Abuse cases\n\n## Authorization matrix\n\n## Findings\n"),
+    "perf": "## Load model\n\n## SLO per flow\n\n## Capacity\n\n## Scaling triggers\n\n## Next steps\n\n## Findings\n",
+    "quality": ("## Traceability review\n\n## Planned verification\n\n## Cheap performance guards\n\n"
+                "## Process metrics\n\n## Findings\n"),
 }
 
 
@@ -236,10 +248,10 @@ class Doc:
 
 
 def _is_generated(path, root):
-    # INDEX.md and graph.md are generated; README.md files are plain guides without
-    # front matter, so none of them are treated as documents (not linted, not indexed).
+    # INDEX.md, graph.md and the plan_state <PLAN-id>.index.md files are generated; README.md
+    # files are plain guides without front matter, so none of them are treated as documents.
     rel = path.relative_to(root).as_posix()
-    return path.name in ("INDEX.md", "README.md") or rel == GRAPH_PATH
+    return path.name in ("INDEX.md", "README.md") or rel == GRAPH_PATH or path.name.endswith(".index.md")
 
 
 def load_docs(root):
@@ -291,8 +303,12 @@ def write_marked(path, content, header):
 # new
 # --------------------------------------------------------------------------
 
+# Turkish letters become their plain Latin letter, so a slug stays readable ("Satış" is "satis").
+TR_ASCII = str.maketrans("çğıöşüÇĞİÖŞÜ", "cgiosuCGIOSU")
+
+
 def slugify(title):
-    slug = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")
+    slug = re.sub(r"[^a-z0-9]+", "-", title.translate(TR_ASCII).lower()).strip("-")
     return slug or "untitled"
 
 
@@ -306,8 +322,15 @@ def used_numbers(root, prefix):
     found = set()
     root = Path(root)
     if root.is_dir():
-        for p in root.rglob("*.md"):
-            _scan_ids(p.read_text(encoding="utf-8", errors="replace"), prefix, found)
+        # A file name that starts with the ID also takes the number, so state files of
+        # other tools (PLAN-0001.run.json, PLAN-0001.journal.jsonl) reserve it too.
+        name_re = re.compile(rf"{re.escape(prefix)}-(\d+)(?!\d)")
+        for p in root.rglob("*"):
+            m = name_re.match(p.name)
+            if m:
+                found.add(int(m.group(1)))
+            if p.suffix == ".md" and p.is_file():
+                _scan_ids(p.read_text(encoding="utf-8", errors="replace"), prefix, found)
     info = repo_info(root)
     if info:
         top, rel = info
@@ -318,6 +341,11 @@ def used_numbers(root, prefix):
             if r and r.returncode == 0:
                 _scan_ids(r.stdout, prefix, found)
     return found
+
+
+def next_number(root, prefix):
+    """The next free number for prefix: one above every number used on any branch."""
+    return max(used_numbers(root, prefix), default=0) + 1
 
 
 def _quote(value):
@@ -335,7 +363,7 @@ def cmd_new(args):
     if not title or "\n" in title:
         raise DocsError("title must be a non-empty single line")
     root = Path(args.root)
-    number = max(used_numbers(root, prefix), default=0) + 1
+    number = next_number(root, prefix)
     doc_id = f"{prefix}-{number:04d}"
     slug = slugify(title)
     area = args.area or (slug if args.kind == "domain" else "general")

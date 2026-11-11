@@ -504,18 +504,24 @@ def cmd_clean(args):
         return 2
     apply = "--apply" in args
     name = project_name(project_root())
-    label = f"stopped containers of project {name}"
-    cmd = ["container", "prune", "-f", "--filter", f"label=com.docker.compose.project={name}"]
+    label = f"label=com.docker.compose.project={name}"
+    # Without -a, image prune removes only dangling images; the label keeps it to images this project built.
+    steps = [(f"stopped containers of project {name}", ["container", "prune", "-f", "--filter", label]),
+             (f"dangling images of project {name}", ["image", "prune", "-f", "--filter", label])]
     if not apply:
-        print(f"would run: {label}")
+        for what, _ in steps:
+            print(f"would run: {what}")
         print("dry run: nothing removed (use --apply)")
         return 0
-    r = _run(cmd)
-    if r.returncode == 0:
-        print(f"{label}: ok")
-        return 0
-    print(f"{label}: failed: {r.stderr.strip()[:200]}")
-    return 1
+    rc = 0
+    for what, cmd in steps:
+        r = _run(cmd)
+        if r.returncode == 0:
+            print(f"{what}: ok")
+        else:
+            print(f"{what}: failed: {r.stderr.strip()[:200]}")
+            rc = 1
+    return rc
 
 
 GATED = {"up", "run", "build", "start", "restart", "down"}

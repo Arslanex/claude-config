@@ -1,4 +1,4 @@
-name: __PKG__
+name: PKG_NAME
 # Taban: servis tanimlari. Ortama ozgu deger overlay dosyalarinda (development/test/production).
 services:
   postgres:
@@ -18,11 +18,10 @@ services:
   api:
     build:
       context: ../backend
-    # VARSAYIM: uygulama yolu ilk kod yazilinca dogrulanacak
-    command: ["uvicorn", "__PKG__.interface.http.app:app", "--host", "0.0.0.0", "--port", "8000"]
+    command: ["uvicorn", "PKG_NAME.interface.http.app:app", "--host", "0.0.0.0", "--port", "8000"]
     environment:
-      DEPLOYMENT__TENANCY: shared_rls
-      DEPLOYMENT__TOPOLOGY: saas
+      DEPLOYMENT_TENANCY: shared_rls
+      DEPLOYMENT_TOPOLOGY: saas
     depends_on:
       postgres:
         condition: service_healthy
@@ -32,10 +31,10 @@ services:
     build:
       context: ../backend
     # VARSAYIM: worker giris noktasi ilk kod yazilinca dogrulanacak
-    command: ["python", "-m", "__PKG__.worker"]
+    command: ["python", "-m", "PKG_NAME.worker"]
     environment:
-      DEPLOYMENT__TENANCY: shared_rls
-      DEPLOYMENT__TOPOLOGY: saas
+      DEPLOYMENT_TENANCY: shared_rls
+      DEPLOYMENT_TOPOLOGY: saas
     depends_on:
       postgres:
         condition: service_healthy

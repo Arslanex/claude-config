@@ -8,8 +8,13 @@ services:
   api:
     image: ${API_IMAGE:?API_IMAGE gerekli}
     env_file: ["../.env.production"]
+    # Uretim her zaman gercek dis servislerle calisir; sahte adaptor yalniz gelistirme ve test icindir (ARCH-0007).
+    environment:
+      WORKER_MODE: live
     restart: unless-stopped
   worker:
     image: ${API_IMAGE:?API_IMAGE gerekli}
     env_file: ["../.env.production"]
+    environment:
+      WORKER_MODE: live
     restart: unless-stopped

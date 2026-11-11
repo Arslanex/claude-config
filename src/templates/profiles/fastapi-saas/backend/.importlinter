@@ -1,22 +1,22 @@
 [importlinter]
-root_package = __PKG__
+root_package = PKG_NAME
 include_external_packages = True
 
 [importlinter:contract:layers]
-name = Katman yonu (ARCH-0001)
+name = Katman yonu (ARCH-0005)
 type = layers
 layers =
-    __PKG__.interface | __PKG__.worker
-    __PKG__.features
-    __PKG__.lib
-    __PKG__.infra
-    __PKG__.core | __PKG__.config
+    PKG_NAME.interface | PKG_NAME.worker
+    PKG_NAME.features
+    PKG_NAME.lib
+    PKG_NAME.infra
+    PKG_NAME.core | PKG_NAME.config
 
 [importlinter:contract:interface-no-models]
-name = interface dogrudan ORM modelini import etmez (ARCH-0001)
+name = interface dogrudan ORM modelini import etmez (ARCH-0005)
 type = forbidden
 source_modules =
-    __PKG__.interface
+    PKG_NAME.interface
 forbidden_modules =
-    __PKG__.infra.database.models
+    PKG_NAME.infra.database.models
 allow_indirect_imports = True
