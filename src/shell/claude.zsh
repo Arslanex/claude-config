@@ -10,5 +10,14 @@ cauto() {
   return $rc
 }
 
+# Full mode, by your choice for one session: no sandbox and no permission prompts.
+# The hooks still deny secrets, destructive commands outside the project and money.
+# Usage: cfull [claude args...]
+cfull() {
+  claude --permission-mode bypassPermissions --settings '{"sandbox":{"enabled":false,"failIfUnavailable":false}}' "$@"
+}
+
 # Initialize Claude Code config (settings.json, CLAUDE.md, .gitignore) in the current project.
+# cinit --kind <profile> [--pkg <name>]: also the profile's scaffold and its team (agents, skills) in .claude/.
+# cinit --kind <profile> --team-only: only the team files, for an existing repo with its own layout.
 cinit() { bash "$HOME/.claude/templates/project/init.sh" "$@"; }

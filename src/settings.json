@@ -1,7 +1,10 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "tui": "fullscreen",
-  "model": "sonnet",
+  "model": "claude-opus-5-5",
+  "env": {
+    "ARCHIFY_UPDATE_CHECK_DISABLED": "1"
+  },
   "attribution": {
     "commit": "",
     "pr": "",
@@ -26,20 +29,10 @@
       "Bash(gh issue view *)",
       "Bash(gh run list *)",
       "Bash(gh run view *)",
-      "mcp__playwright__browser_snapshot",
-      "mcp__playwright__browser_take_screenshot",
-      "mcp__playwright__browser_console_messages",
-      "mcp__playwright__browser_network_requests",
-      "mcp__playwright__browser_network_request",
-      "mcp__playwright__browser_find",
-      "mcp__playwright__browser_wait_for",
+      "mcp__playwright",
       "mcp__cloudflare-api__docs",
       "mcp__cloudflare-api__search",
       "mcp__cloudflare-api__whoami",
-      "mcp__playwright__browser_fill_form",
-      "mcp__playwright__browser_type",
-      "mcp__playwright__browser_press_key",
-      "mcp__playwright__browser_drop",
       "Bash(gh pr create *)",
       "Bash(gh pr comment *)",
       "Bash(gh pr review *)",
@@ -75,9 +68,7 @@
     "ask": [
       "Bash(gh pr merge *)",
       "Bash(gh repo create *)",
-      "mcp__cloudflare-api__execute",
-      "mcp__playwright__browser_evaluate",
-      "mcp__playwright__browser_file_upload"
+      "mcp__cloudflare-api__execute"
     ]
   },
   "autoCompactWindow": 400000,
@@ -93,6 +84,15 @@
         "~/.gnupg",
         "~/.pypirc",
         "~/.netrc"
+      ],
+      "allowRead": [
+        "~/.cache/uv/**/certifi/cacert.pem"
+      ],
+      "allowWrite": [
+        "~/.cache",
+        "~/.local/share/uv",
+        "~/.npm",
+        "~/.semgrep"
       ]
     },
     "network": {
@@ -106,7 +106,8 @@
         "static.crates.io",
         "proxy.golang.org",
         "rubygems.org",
-        "*.githubusercontent.com"
+        "*.githubusercontent.com",
+        "semgrep.dev"
       ]
     },
     "enableWeakerNetworkIsolation": true,
@@ -135,6 +136,24 @@
           {
             "type": "command",
             "command": "python3 \"$HOME/.claude/hooks/edit-guard.py\""
+          }
+        ]
+      },
+      {
+        "matcher": "AskUserQuestion",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$HOME/.claude/hooks/notify.py\""
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__context7__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$HOME/.claude/hooks/context7-guard.py\""
           }
         ]
       }

@@ -235,5 +235,31 @@ class TestInput(GuardTestCase):
         self.assertEqual(r.returncode, 0)
 
 
+class SecretAndOutsideDeleteTest(GuardTestCase):
+    """These hold in full mode too, where no sandbox stops them."""
+
+    def test_secret_files_blocked_even_for_data_commands(self):
+        for c in ("cat .env", "cat ~/.ssh/id_rsa", "head -n 3 backend/.env.production",
+                  "grep KEY .env.local", "cp ~/.aws/credentials x", "cat certs/server.pem"):
+            with self.subTest(c=c):
+                self.assertBlocked(c)
+
+    def test_secret_names_in_text_and_examples_allowed(self):
+        for c in ("cat .env.example", "cp deploy/env.example .env.example", "echo .env >> .gitignore",
+                  "git commit -m 'ignore .env files'", "grep -n env README.md"):
+            with self.subTest(c=c):
+                self.assertAllowed(c)
+
+    def test_recursive_delete_outside_project_blocked(self):
+        for c in ("rm -rf ~/Documents", "rm -r /usr/local/lib/x", "rm -rf ../other", "rm -rf .", "rm -rf $HOME/x"):
+            with self.subTest(c=c):
+                self.assertBlocked(c)
+
+    def test_recursive_delete_inside_project_or_temp_allowed(self):
+        for c in ("rm -rf build", "rm -rf node_modules .cache/x", "rm -rf /tmp/x", "rm -f ../one-file.txt"):
+            with self.subTest(c=c):
+                self.assertAllowed(c)
+
+
 if __name__ == "__main__":
     unittest.main()

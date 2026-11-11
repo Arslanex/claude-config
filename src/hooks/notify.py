@@ -35,6 +35,11 @@ elif event == "Notification":
     labels = {"idle_prompt": "Girdi bekliyor", "elicitation_dialog": "Bir soru soruyor"}
     title = f"Claude Code · {project}"
     body = clip(labels.get(kind) or d.get("message") or "Dikkatin gerekiyor")
+elif event == "PreToolUse" and d.get("tool_name") == "AskUserQuestion":
+    qs = (d.get("tool_input") or {}).get("questions") or [{}]
+    first = qs[0] if isinstance(qs[0], dict) else {}
+    title = f"Soru · {project}"
+    body = clip(first.get("question") or "Claude bir soru soruyor")
 elif event == "Stop":
     title = f"Claude Code · {project}"
     body = "Görev tamamlandı"

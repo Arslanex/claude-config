@@ -476,6 +476,36 @@ def check_pipe_into_shell(shell_cmd, depth):
         stage = stage.pipe_from
 
 
+# Secret files: also checked for data commands, so `cat .env` blocks when no sandbox is on (cfull).
+SECRET_ARG = re.compile(
+    r"(?:^|/)(?:\.env(?:\.(?!example$|sample$|template$|dist$)[\w.-]+)?|\.netrc|\.pypirc|"
+    r"id_(?:rsa|dsa|ecdsa|ed25519)|[^/]+\.pem|[^/]+\.key|credentials[^/]*\.json)$"
+    r"|(?:^|/)\.(?:ssh|aws|gnupg)(?:/|$)")
+TEMP_ROOTS = ("/tmp", "/private/tmp", "/var/folders", "/private/var/folders")
+
+
+def check_secret_args(name, args):
+    if name in ("echo", "printf"):
+        return
+    for a in args:
+        if not a.startswith("-") and SECRET_ARG.search(a):
+            block("security", f"reading or touching a secret file ({a})")
+
+
+def check_rm_outside_project(name, args):
+    """A recursive delete must stay inside the project or a temp dir."""
+    if name != "rm" or not any(re.fullmatch(r"-\w*[rR]\w*|--recursive", a) for a in args):
+        return
+    root = os.path.realpath(cwd or os.getcwd())
+    temps = TEMP_ROOTS + (os.path.realpath(os.environ.get("TMPDIR", "/tmp")),)
+    for a in args:
+        if a.startswith("-"):
+            continue
+        path = os.path.realpath(os.path.join(root, os.path.expandvars(os.path.expanduser(a))))
+        if path == root or not (path.startswith(root + os.sep) or path.startswith(temps)):
+            block("security", f"recursive delete outside the project ({a})")
+
+
 def check_cmd(c, depth):
     argv = unwrap(c.words)
     if not argv:
@@ -497,6 +527,8 @@ def check_cmd(c, depth):
     for kind, why, pat in CMD_RULES:
         if re.match(pat, s, re.I):
             block(kind, why)
+    check_secret_args(name, args)
+    check_rm_outside_project(name, args)
     if name in CLOUD_CLIS:
         if not re.search(CLOUD_READ, s) or re.search(CLOUD_MUTATE, s):
             block("money", CLOUD_WHY)
