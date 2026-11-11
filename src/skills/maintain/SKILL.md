@@ -20,7 +20,7 @@ Produce a monthly project health report. Report and recommend only.
 6. Write all findings into a single LOG doc: `python3 tools/docs.py new log "Project health <YYYY-MM>"`. Use these headings: Ozet, Kirmizi seyler, Eskiyen belgeler, Acik isler, Onerilen aksiyonlar.
 
 ## Rules
-- Never fix, delete or move any file. Write only the one LOG doc (and the generated indexes from step 4).
+- Never fix, delete or move any file. Write only the one LOG doc (and the generated indexes from step 5).
 - Never read secret files (`.env` and similar).
 - Keep it short: one line per finding.
 - Finish by giving the user the LOG path and the top recommended actions. Do not commit or push.

@@ -58,8 +58,11 @@
       "name": "context7",
       "kind": "mcp",
       "source": "npm:@upstash/context7-mcp",
-      "status": "candidate",
-      "notes": "pin a version before adding to mcp/servers.json"
+      "status": "approved",
+      "notes": "MIT, Upstash; stdio via npx, version older than two weeks. Review 2026-11-10: no install scripts; calls only context7.com/api (library search, docs context) with the library name and the query text; telemetry is local OpenTelemetry, nothing exported unless OTEL exporters are set; API key optional (CONTEXT7_API_KEY, rate limit without it). Rule: a query never carries project code, data or secrets.",
+      "version": "4.4.4",
+      "reviewed": "2026-11-10",
+      "reviewed_by": "enes+claude"
     },
     {
       "name": "webapp-testing",
@@ -234,6 +237,19 @@
       "ref": "9c61ab243def98f72da12abd41cfcf5bcd91af9d",
       "sha256": "c1aa55738ca65529f88342197fd5d9f48efcf004247c95d4850c3ff708369b75",
       "reviewed": "2026-11-09",
+      "reviewed_by": "enes+claude"
+    },
+    {
+      "name": "archify",
+      "kind": "skill",
+      "source": "https://github.com/tt-a1i/archify",
+      "subpath": "archify",
+      "branch": "v3.2.0",
+      "status": "approved",
+      "notes": "Apache-2.0 (skill dir says MIT); design-project review pages (ERD, sequence, lifecycle, architecture). Review 2026-11-10 of tag v3.2.0, static only: SKILL.md read in full; no runtime npm deps and no install scripts (devDependencies ajv, simple-icons only); subprocesses are node, git and the OS opener; rendered HTML loads nothing remote; browser-check drives Chrome over a pipe, not TCP (set ARCHIFY_CHROME, e.g. the Playwright chromium); network only for remote brand marks given by URL (we never use them) and the update manifest at tt-a1i.github.io (set ARCHIFY_UPDATE_CHECK_DISABLED=1). Rules: keep [archify explainer: on-demand] in the global CLAUDE.md; the skill must never write to ~/.claude/CLAUDE.md itself. Renderer code (about 51k lines JS) not read line by line.",
+      "ref": "208acba8d412335185b2056fedf54b3405df43fb",
+      "sha256": "0ac89264d7ece249d44f1f462d0710443c9ded62db32632c2450872de9b88b37",
+      "reviewed": "2026-11-10",
       "reviewed_by": "enes+claude"
     }
   ]

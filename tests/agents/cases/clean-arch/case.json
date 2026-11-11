@@ -1,6 +1,16 @@
 {
   "agent": "arch-reviewer",
   "expect": [],
-  "forbid": ["SERVICE-COMMITS", "ORM-LEAK", "LAYER-VIOLATION", "DEPLOYMENT-FLAG-LEAK"],
+  "forbid": [
+    "SERVICE-COMMITS",
+    "ORM-LEAK",
+    "LAYER-VIOLATION",
+    "DEPLOYMENT-FLAG-LEAK",
+    "MISPLACED",
+    "HELPER-SPRAWL",
+    "FLAT-LIB",
+    "FAT-INTERFACE",
+    "DEEP-IMPORT"
+  ],
   "clean": true
 }

@@ -6,7 +6,7 @@ h=$(mktemp -d "${TMPDIR:-/tmp}/cc.XXXXXX"); d=$(mktemp -d "${TMPDIR:-/tmp}/cc.XX
 [ -d "$h" ] && [ -d "$d" ] || { echo "mktemp failed" >&2; exit 1; }
 mkdir -p "$h/.claude/templates"
 cp -R "$R/src/templates/project" "$h/.claude/templates/project"
-cp -R "$R/src/templates/profiles" "$h/.claude/templates/profiles"
+rsync -a --inplace --exclude .venv --exclude .cache --exclude .ruff_cache --exclude .mypy_cache --exclude .pytest_cache "$R/src/templates/profiles" "$h/.claude/templates/"
 c="$h/.claude/templates/profiles/fastapi-saas/.cache/uv"
 mkdir -p "$c/sdists-v10"
 echo x > "$c/.lock"

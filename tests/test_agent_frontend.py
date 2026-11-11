@@ -8,7 +8,7 @@ spec = importlib.util.spec_from_file_location("agent_run", ROOT / "tests" / "age
 run = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(run)
 
-PATH = ROOT / "src" / "agents" / "frontend.md"
+PATH = run.PROFILE_AGENTS_DIR / "frontend.md"
 TEXT = PATH.read_text(encoding="utf-8")
 FIELDS, BODY = run.parse_agent(TEXT)
 TOOLS = ["Read", "Grep", "Glob", "Edit", "Write", "Bash"]
@@ -24,13 +24,13 @@ class FrontendAgentTest(unittest.TestCase):
     """Static checks only: frontend is not a *-reviewer, so the FINDING harness (make agent-eval) does not apply to it."""
 
     def test_frontmatter(self):
-        self.assertEqual(set(FIELDS), {"name", "description", "tools", "model"})
+        self.assertEqual(set(FIELDS), {"name", "description", "tools", "model", "skills"})
         self.assertEqual(FIELDS["name"], PATH.stem)
         self.assertGreater(len(FIELDS["description"]), 40)
         self.assertEqual(FIELDS["model"], "sonnet")
 
     def test_tools_are_the_minimal_set(self):
-        self.assertEqual(run.agent_tools(FIELDS), TOOLS)
+        self.assertEqual(run.agent_tools(FIELDS), [*TOOLS, "mcp__playwright__*", "mcp__context7__*", "Skill"])
 
     def test_model_matches_the_existing_working_agents(self):
         other, _ = run.parse_agent((run.AGENTS_DIR / "work-verifier.md").read_text(encoding="utf-8"))
@@ -75,7 +75,15 @@ class FrontendAgentTest(unittest.TestCase):
         body = section("Skills (load only when the task needs them)")
         self.assertRegex(body, r"`frontend-design`: only for")
         self.assertRegex(body, r"`react-best-practices`: only for")
-        self.assertRegex(body, r"(?i)do not load either for a routine edit")
+        self.assertRegex(body, r"`ui-design`: only for a task that names a design flow step")
+        self.assertRegex(body, r"(?i)do not load any of them for a routine edit")
+
+    def test_design_flow_uses_the_approved_design_system(self):
+        body = section("Design flow")
+        self.assertIn("`ui-design`", body)
+        self.assertRegex(body, r"user approval, once per project")
+        self.assertRegex(body, r"tokens from its tokens file")
+        self.assertRegex(BODY, r"Playwright e2e tests of a page belong to the Tester")
 
     def test_every_screen_handles_states_and_accessibility(self):
         body = section("Every screen")

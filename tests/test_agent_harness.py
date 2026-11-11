@@ -12,7 +12,7 @@ ALLOWED_TOOLS = ["Read", "Grep", "Glob"]
 
 
 def agent(name):
-    return run.parse_agent((run.AGENTS_DIR / f"{name}.md").read_text(encoding="utf-8"))
+    return run.parse_agent(run.agent_file(name).read_text(encoding="utf-8"))
 
 
 def tool_event(*names):
@@ -27,7 +27,7 @@ class CaseFilesTest(unittest.TestCase):
     def test_cases_are_valid(self):
         for c in self.cases:
             with self.subTest(case=c["name"]):
-                self.assertTrue((run.AGENTS_DIR / f"{c['agent']}.md").is_file())
+                self.assertTrue(run.agent_file(c["agent"]).is_file())
                 self.assertIsInstance(c["expect"], list)
                 self.assertIsInstance(c["forbid"], list)
                 self.assertIsInstance(c["clean"], bool)
@@ -41,7 +41,7 @@ class CaseFilesTest(unittest.TestCase):
             with self.subTest(agent=name):
                 self.assertTrue(any(c["expect"] for c in mine))
                 self.assertTrue(any(c["clean"] for c in mine))
-        for path in run.AGENTS_DIR.glob("*-reviewer.md"):
+        for path in run.reviewer_files():
             self.assertIn(path.stem, {c["agent"] for c in self.cases})
 
     def test_ids_are_in_agent_dictionary(self):
@@ -61,7 +61,7 @@ class CaseFilesTest(unittest.TestCase):
                     self.assertEqual(set(c["forbid"]), declared)
 
     def test_reviewer_tools_are_read_only(self):
-        for path in run.AGENTS_DIR.glob("*-reviewer.md"):
+        for path in run.reviewer_files():
             fields, _ = run.parse_agent(path.read_text(encoding="utf-8"))
             with self.subTest(agent=path.stem):
                 self.assertEqual(fields["name"], path.stem)

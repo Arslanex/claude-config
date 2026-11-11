@@ -5,6 +5,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 SKILLS_DIR = ROOT / "src" / "skills"
+# Global skills plus the ones a profile ships into the project (team/skills).
+SKILL_DIRS = [SKILLS_DIR, *sorted((ROOT / "src" / "templates" / "profiles").glob("*/team/skills"))]
 DOCS_PY = ROOT / "src" / "templates" / "project" / "tools" / "docs.py"
 
 spec = importlib.util.spec_from_file_location("docs_engine", DOCS_PY)
@@ -38,14 +40,15 @@ def parse(path):
 
 class SkillsTest(unittest.TestCase):
     def skill_files(self):
-        files = sorted(SKILLS_DIR.glob("*/SKILL.md"))
+        files = sorted(f for d in SKILL_DIRS for f in d.glob("*/SKILL.md"))
         self.assertTrue(files, "no skills found")
         return files
 
     def test_every_skill_dir_has_skill_md(self):
-        for d in SKILLS_DIR.iterdir():
-            if d.is_dir():
-                self.assertTrue((d / "SKILL.md").is_file(), f"{d.name}: missing SKILL.md")
+        for base in SKILL_DIRS:
+            for d in base.iterdir():
+                if d.is_dir():
+                    self.assertTrue((d / "SKILL.md").is_file(), f"{d.name}: missing SKILL.md")
 
     def test_frontmatter(self):
         for f in self.skill_files():
@@ -75,3 +78,23 @@ class SkillsTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PromoteSkillTest(unittest.TestCase):
+    BODY = (SKILLS_DIR / "promote" / "SKILL.md").read_text(encoding="utf-8")
+
+    def test_targets_the_repo_never_the_installed_copy(self):
+        self.assertIn("~/.claude/config-source", self.BODY)
+        self.assertIn("Never edit `~/.claude` directly", self.BODY)
+        self.assertRegex(self.BODY, r"Never commit, push or run `install.sh`")
+
+    def test_keeps_project_only_changes_local(self):
+        self.assertIn("Project only:", self.BODY)
+        self.assertIn("Keep it local and stop", self.BODY)
+
+    def test_maps_project_files_to_their_source(self):
+        for part in ("team/...", "`PKG_NAME`", "src/templates/project/", "`src/hooks/`", "status: draft"):
+            self.assertIn(part, self.BODY)
+
+    def test_global_instructions_point_to_it(self):
+        self.assertIn("with the `promote` skill", (ROOT / "src" / "CLAUDE.md").read_text(encoding="utf-8"))

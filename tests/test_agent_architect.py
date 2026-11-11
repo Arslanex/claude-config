@@ -8,17 +8,17 @@ spec = importlib.util.spec_from_file_location("agent_run", ROOT / "tests" / "age
 run = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(run)
 
-PATH = ROOT / "src" / "agents" / "architect.md"
+PATH = run.PROFILE_AGENTS_DIR / "architect.md"
 TEXT = PATH.read_text(encoding="utf-8")
 FIELDS, BODY = run.parse_agent(TEXT)
-TOOLS = ["Read", "Grep", "Glob", "Edit", "Write"]
+TOOLS = ["Read", "Grep", "Glob", "Edit", "Write", "mcp__context7__*", "Skill"]
 
 
 class ArchitectAgentTest(unittest.TestCase):
     """Static checks only: architect is not a *-reviewer, so the FINDING harness (make agent-eval) does not apply to it."""
 
     def test_frontmatter(self):
-        self.assertEqual(set(FIELDS), {"name", "description", "tools", "model"})
+        self.assertEqual(set(FIELDS), {"name", "description", "tools", "model", "skills"})
         self.assertEqual(FIELDS["name"], PATH.stem)
         self.assertGreater(len(FIELDS["description"]), 40)
 
@@ -36,32 +36,37 @@ class ArchitectAgentTest(unittest.TestCase):
 
     def test_writes_docs_only_never_code_or_tests(self):
         self.assertRegex(BODY, r"(?i)do not write application code or tests")
-        self.assertRegex(BODY, r"(?i)write only under `docs/decisions/`")
+        self.assertRegex(BODY, r"(?i)write only the ADR file and the architecture document the task file names")
+        self.assertIn("`python3 tools/docs.py new adr`, under `docs/02-decisions/`", BODY)
+        self.assertNotIn("docs/decisions/", BODY)
         self.assertRegex(BODY, r"(?i)architecture document the task file names")
         for text in ("`backend/`", "`frontend/`", "compose/Docker/CI"):
             self.assertIn(text, BODY)
 
     def test_adr_status_is_draft_only(self):
-        self.assertIn("`Durum: Taslak` only", BODY)
-        self.assertRegex(BODY, r"(?i)`Kabul` is given only by the user, never by you")
+        self.assertIn("leave `status: draft`", BODY)
+        self.assertRegex(BODY, r"(?i)`accepted` is given only by the user, never by you")
 
-    def test_adr_numbering_continues_the_highest(self):
-        self.assertRegex(BODY, r"(?i)find the highest existing `ARCH-NNNN` and use the next one")
+    def test_adr_file_comes_from_the_docs_engine(self):
+        self.assertRegex(BODY, r"(?i)fill the ADR file named in the task")
+        self.assertRegex(BODY, r"(?i)never number or create an ADR by hand")
+        self.assertRegex(BODY, r"(?i)a repo without `tools/docs.py` keeps its own ADR location")
 
-    def test_never_edits_an_existing_adr(self):
-        self.assertRegex(BODY, r"(?i)never edit an existing ADR")
-        self.assertIn("ARCH-000X'in yerine geçer", BODY)
+    def test_never_edits_an_accepted_adr(self):
+        self.assertRegex(BODY, r"(?i)never edit an accepted ADR or ARCH doc")
+        self.assertIn("`superseded_by`", BODY)
 
     def test_reads_before_deciding_and_never_contradicts(self):
-        self.assertRegex(BODY, r"(?i)read the relevant code, the existing ADRs")
+        self.assertRegex(BODY, r"(?i)read the relevant code, the existing ADR and ARCH docs")
         self.assertIn("CLAUDE.md, `.claude/rules`", BODY)
         self.assertRegex(BODY, r"(?i)do not contradict them")
         self.assertRegex(BODY, r"(?i)ask the user which wins")
 
     def test_adr_sections_and_size(self):
-        order = ["Bağlam", "Karar", "Seçenekler", "Sonuçlar", "Doğrulama"]
+        order = ["Context, ", "Decision, ", "Alternatives (", "Consequences, ", "Verification ("]
         positions = [BODY.index(s) for s in order]
         self.assertEqual(positions, sorted(positions))
+        self.assertRegex(BODY, r"(?i)language of the repo's existing ADRs")
         self.assertRegex(BODY, r"(?i)at most 40 lines")
         self.assertRegex(BODY, r"(?i)only when there is a real decision")
         self.assertRegex(BODY, r"(?i)list of items that need the user's approval")

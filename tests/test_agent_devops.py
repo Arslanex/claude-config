@@ -8,17 +8,17 @@ spec = importlib.util.spec_from_file_location("agent_run", ROOT / "tests" / "age
 run = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(run)
 
-PATH = ROOT / "src" / "agents" / "devops.md"
+PATH = run.PROFILE_AGENTS_DIR / "devops.md"
 TEXT = PATH.read_text(encoding="utf-8")
 FIELDS, BODY = run.parse_agent(TEXT)
-TOOLS = ["Read", "Grep", "Glob", "Edit", "Write", "Bash"]
+TOOLS = ["Read", "Grep", "Glob", "Edit", "Write", "Bash", "mcp__context7__*", "Skill"]
 
 
 class DevopsAgentTest(unittest.TestCase):
     """Static checks only: devops is not a *-reviewer, so the FINDING harness (make agent-eval) does not apply to it."""
 
     def test_frontmatter(self):
-        self.assertEqual(set(FIELDS), {"name", "description", "tools", "model"})
+        self.assertEqual(set(FIELDS), {"name", "description", "tools", "model", "skills"})
         self.assertEqual(FIELDS["name"], PATH.stem)
         self.assertGreater(len(FIELDS["description"]), 40)
         self.assertEqual(FIELDS["model"], "sonnet")  # same as the other working agents

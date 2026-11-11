@@ -9,26 +9,28 @@ run = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(run)
 
 WRITE_TOOLS = {"Edit", "Write", "NotebookEdit", "MultiEdit"}
-# name -> (exact tools, model)
+# name -> (exact tools, model); None means the caller passes the model on each call
 ROLES = {
     "file-explorer": (["Read", "Grep", "Glob"], "haiku"),
     "structure-explorer": (["Read", "Grep", "Glob"], "haiku"),
     "work-verifier": (["Read", "Grep", "Glob", "Bash"], "sonnet"),
+    "plan-critic": (["Read", "Grep", "Glob"], None),
 }
 
 
 def load(name):
-    return run.parse_agent((run.AGENTS_DIR / f"{name}.md").read_text(encoding="utf-8"))
+    return run.parse_agent(run.agent_file(name).read_text(encoding="utf-8"))
 
 
 class ReadOnlyRolesTest(unittest.TestCase):
     """Static checks only: the model is never called here."""
 
     def test_frontmatter(self):
-        for name in ROLES:
+        for name, (_, model) in ROLES.items():
             fields, _ = load(name)
+            expected = {"name", "description", "tools"} | ({"model"} if model else set())
             with self.subTest(agent=name):
-                self.assertEqual(set(fields), {"name", "description", "tools", "model"})
+                self.assertEqual(set(fields), expected)
                 self.assertEqual(fields["name"], name)
                 self.assertGreater(len(fields["description"]), 40)
 
@@ -37,7 +39,7 @@ class ReadOnlyRolesTest(unittest.TestCase):
             fields, _ = load(name)
             with self.subTest(agent=name):
                 self.assertEqual(run.agent_tools(fields), tools)
-                self.assertEqual(fields["model"], model)
+                self.assertEqual(fields.get("model"), model)
 
     def test_no_write_tool(self):
         for name in ROLES:
@@ -75,9 +77,10 @@ class ReadOnlyRolesTest(unittest.TestCase):
         self.assertNotRegex(body, r"approved \d+")
         self.assertRegex(body, r"(?i)counts that verify prints")
 
-    def test_work_verifier_knows_conduct_and_a_tracked_file(self):
+    def test_work_verifier_knows_the_dev_command_and_a_tracked_file(self):
         _, body = load("work-verifier")
-        self.assertRegex(body, r"kickoff, maintain, remember and conduct")
+        self.assertRegex(body, r"design-project, grant, kickoff, maintain, promote and remember")
+        self.assertRegex(body, r"saas-fastapi is NOT global")
         self.assertNotRegex(body, r"expected: untracked")
         self.assertIn("is expected to be tracked", body)
 
@@ -101,8 +104,8 @@ class ChangedReviewerTextTest(unittest.TestCase):
     def test_arch_reviewer_rule_location_is_overridable_and_scope_unchanged(self):
         _, body = load("arch-reviewer")
         self.assertIn("(or wherever the repo's CLAUDE.md says they live)", body)
-        self.assertIn("docs/01-architecture/ARCH-0001-backend-katmanlari.md", body)
-        self.assertNotIn("ARCH-0003", body)
+        self.assertIn("docs/01-architecture/ARCH-0005-katmanlar.md", body)
+        self.assertNotIn("docs/decisions/", body)
 
 
 if __name__ == "__main__":

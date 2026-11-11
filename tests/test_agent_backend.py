@@ -8,17 +8,17 @@ spec = importlib.util.spec_from_file_location("agent_run", ROOT / "tests" / "age
 run = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(run)
 
-PATH = ROOT / "src" / "agents" / "backend.md"
+PATH = run.PROFILE_AGENTS_DIR / "backend.md"
 TEXT = PATH.read_text(encoding="utf-8")
 FIELDS, BODY = run.parse_agent(TEXT)
-TOOLS = ["Read", "Grep", "Glob", "Edit", "Write", "Bash"]
+TOOLS = ["Read", "Grep", "Glob", "Edit", "Write", "Bash", "mcp__context7__*", "Skill"]
 
 
 class BackendAgentTest(unittest.TestCase):
     """Static checks only: backend is not a *-reviewer, so the FINDING harness (make agent-eval) does not apply to it."""
 
     def test_frontmatter(self):
-        self.assertEqual(set(FIELDS), {"name", "description", "tools", "model"})
+        self.assertEqual(set(FIELDS), {"name", "description", "tools", "model", "skills"})
         self.assertEqual(FIELDS["name"], PATH.stem)
         self.assertGreater(len(FIELDS["description"]), 40)
         self.assertEqual(FIELDS["model"], "sonnet")
@@ -43,10 +43,10 @@ class BackendAgentTest(unittest.TestCase):
         self.assertRegex(BODY, r"(?i)do not decide it")
 
     def test_follows_the_file_structure_standard(self):
-        self.assertIn("ARCH-0001", BODY)
-        self.assertIn("ARCH-0003", BODY)
+        self.assertIn("ARCH-0005", BODY)
+        self.assertIn("ARCH-0006", BODY)
         self.assertRegex(BODY, r"(?i)follow the repo's current file naming")
-        self.assertRegex(BODY, r"(?i)in a new project follow ARCH-0001 and ARCH-0003")
+        self.assertRegex(BODY, r"(?i)in a new project follow ARCH-0005 and ARCH-0006")
         self.assertRegex(BODY, r"(?i)before the first edit")
         self.assertRegex(BODY, r"(?i)never `utils\.py`")
         self.assertRegex(BODY, r"(?i)prefer editing an existing file")
@@ -68,9 +68,25 @@ class BackendAgentTest(unittest.TestCase):
         self.assertIn("glc pairs files by the same name", BODY)
         self.assertIn("evalos groups models by domain and repos by table", BODY)
 
-    def test_split_hint_is_600_lines_and_not_a_hard_rule(self):
-        self.assertRegex(BODY, r"(?i)about 600 lines is a hint to consider splitting it by purpose, not a hard rule")
-        self.assertNotRegex(BODY, r"(?i)400 lines|under about 30 lines|is merged into its neighbour")
+    def test_files_split_by_content_never_by_line_count(self):
+        self.assertRegex(BODY, r"(?i)never split a file by line count: split by content \(ARCH-0006")
+        self.assertNotRegex(BODY, r"(?i)\d+ lines")
+
+    def test_placement_rules_and_module_plan(self):
+        for part in ("`infra/<gate>/`", "`interface/http/security/`", "that group's `helpers/`", "`lib/<package>/`",
+                     "Never `infra/security`", "a feature root never exports a helper"):
+            self.assertIn(part, BODY)
+        self.assertRegex(BODY, r"(?i)a file that is not in the plan is a question for the Architect")
+
+    def test_interface_only_translates_and_contract_comes_first(self):
+        self.assertRegex(BODY, r"(?i)a route, CLI command or worker job only translates")
+        self.assertRegex(BODY, r"(?i)write `schema\.py` and the route signatures first, run `make openapi`")
+        self.assertRegex(BODY, r"(?i)never edit `docs/api/openapi\.json` by hand")
+
+    def test_recipes_point_at_real_skills(self):
+        for skill in ("new-feature", "new-lib-package", "migration", "api-contract"):
+            self.assertIn(skill, BODY)
+            self.assertTrue((PATH.parent.parent / "skills" / skill / "SKILL.md").is_file(), skill)
 
     def test_package_exposure_and_imports_only_through_the_package(self):
         self.assertRegex(BODY, r"(?i)package exposure and imports go only through the package")
@@ -80,17 +96,6 @@ class BackendAgentTest(unittest.TestCase):
         self.assertRegex(BODY, r"(?i)header: follow the repo's file header format")
         self.assertNotIn("What:", BODY)
         self.assertNotIn("How:", BODY)
-
-    def test_adr_0003_is_a_short_default(self):
-        adr = ROOT / "docs" / "decisions" / "ARCH-0003-dosya-yapisi.md"
-        text = adr.read_text(encoding="utf-8")
-        self.assertLessEqual(len(text.splitlines()), 25)
-        for part in ("service.py", "schema.py", "errors.py", "helpers/", "utils.py", "Ne yapar:", "Nasıl:",
-                     "D100", "D104", "~600", "repoyu izle", "glc", "evalos", "önceliklidir"):
-            self.assertIn(part, text)
-        self.assertNotIn("içeriği olunca", text)
-        self.assertNotIn("What:", text)
-        self.assertNotRegex(text, r"(?i)en çok 4 satır|toplam en çok")
 
     def test_never_weakens_tests(self):
         self.assertRegex(BODY, r"(?i)never weaken, skip or delete an existing test")
@@ -140,6 +145,11 @@ class BackendAgentTest(unittest.TestCase):
     def test_output_contract(self):
         for section in ("Changed files", "Tests run", "UNKNOWN", "Needs from the user", "Open risks"):
             self.assertIn(section, BODY)
+
+    def test_external_gates_ship_a_fake_adapter(self):
+        self.assertRegex(BODY, r"ships a fake adapter with the same interface")
+        self.assertIn("`WorkerSettings().pick(live=..., fake=...)`", BODY)
+        self.assertRegex(BODY, r"you write it but never run it")
 
     def test_is_not_a_reviewer(self):
         self.assertFalse(PATH.name.endswith("-reviewer.md"))

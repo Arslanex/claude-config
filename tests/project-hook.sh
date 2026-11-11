@@ -9,7 +9,7 @@ fail=0
 ok() { echo "ok   $1"; }
 bad() { echo "FAIL $1"; fail=1; }
 mkdir -p "$t/home/.claude"
-cp -R "$R/src/templates" "$t/home/.claude/templates"
+mkdir -p "$t/home/.claude" && rsync -a --inplace --exclude .venv --exclude .cache --exclude .ruff_cache --exclude .mypy_cache --exclude .pytest_cache "$R/src/templates" "$t/home/.claude/"
 newproj() {
   rm -rf "$t/p" "$t/remote.git"
   git init -q --bare "$t/remote.git"

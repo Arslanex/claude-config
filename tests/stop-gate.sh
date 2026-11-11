@@ -19,5 +19,14 @@ mk fail 'echo BOOM; exit 1' 1;                                    block fail ""
 silent fail ',"stop_hook_active":true' "(stop_hook_active)"
 mk unconf 'echo "lint: not configured for this project"; exit 1' 1; silent unconf "" "(yapilandirilmamis)"
 mk clean 'echo BOOM; exit 1' 0;                                   silent clean "" "(temiz agac)"
+mk cache 'echo ran >> ../cache.log' 1;                             silent cache "" "(ilk calisma)"
+silent cache "" "(agac ayni)"
+if [ "$(wc -l < "$t/cache.log")" -eq 1 ]; then echo "ok   cache (ayni agacta tekrar calismadi)"; else echo "FAIL cache: make check tekrar calisti"; fail=1; fi
+echo y >> "$t/cache/dirty.txt";                                   silent cache "" "(agac degisti)"
+if [ "$(wc -l < "$t/cache.log")" -eq 2 ]; then echo "ok   cache (degisince yeniden calisti)"; else echo "FAIL cache: degisiklikte calismadi"; fail=1; fi
+mk failcache 'echo BOOM; exit 1' 1;                               block failcache ""
+block failcache ""
+mk sub 'echo BOOM; exit 1' 1; mkdir -p "$t/sub/tpl"; printf 'check:\n\techo BOOM; exit 1\n' > "$t/sub/tpl/Makefile"
+out=$(echo "{\"cwd\":\"$t/sub/tpl\"}" | python3 "$H"); if [ -z "$out" ]; then echo "ok   sub (alt klasor tetiklemez)"; else echo "FAIL sub: $out"; fail=1; fi
 mkdir -p "$t/nomake";                                             silent nomake "" "(Makefile yok)"
 if [ $fail = 0 ]; then echo "PASS"; else echo "FAILED"; exit 1; fi

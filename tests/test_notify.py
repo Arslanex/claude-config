@@ -58,6 +58,11 @@ class TestNotify(unittest.TestCase):
             {"hook_event_name": "Notification", "notification_type": "permission_prompt"},
             {"hook_event_name": "Notification", "message": "custom; message"},
             {"hook_event_name": "Stop", "cwd": "/tmp/proj"},
+            {"hook_event_name": "PreToolUse", "tool_name": "AskUserQuestion",
+             "tool_input": {"questions": [{"question": "Hangisi?"}]}},
+            {"hook_event_name": "PreToolUse", "tool_name": "AskUserQuestion",
+             "tool_input": {"questions": ["bad"]}},
+            {"hook_event_name": "PreToolUse", "tool_name": "Bash"},
             {"hook_event_name": "SessionStart"},
             {},
         ]
@@ -74,6 +79,18 @@ class TestNotify(unittest.TestCase):
         self.calls.unlink(missing_ok=True)
         self.assertSilentOk(self.run_notify({"hook_event_name": "Stop"}))
         self.assertTrue(self.calls.exists(), "expected stub osascript fallback")
+
+    def test_ask_user_question_notifies(self):
+        self.calls.unlink(missing_ok=True)
+        self.assertSilentOk(self.run_notify({
+            "hook_event_name": "PreToolUse", "tool_name": "AskUserQuestion",
+            "tool_input": {"questions": [{"question": "Hangisi?"}]}}))
+        self.assertTrue(self.calls.exists(), "expected a notification for a question")
+
+    def test_other_pre_tool_use_is_silent(self):
+        self.calls.unlink(missing_ok=True)
+        self.assertSilentOk(self.run_notify({"hook_event_name": "PreToolUse", "tool_name": "Bash"}))
+        self.assertFalse(self.calls.exists(), "only AskUserQuestion should notify")
 
 
 if __name__ == "__main__":

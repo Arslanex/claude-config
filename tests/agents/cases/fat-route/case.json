@@ -1,0 +1,10 @@
+{
+  "agent": "arch-reviewer",
+  "expect": [
+    "FAT-INTERFACE"
+  ],
+  "forbid": [
+    "SERVICE-COMMITS"
+  ],
+  "clean": false
+}

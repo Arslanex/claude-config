@@ -119,6 +119,10 @@ class NewTests(TempRoot):
         self.assertEqual(data["title"], "Use SQLite")
         self.assertEqual(run("lint", "--root", self.root)[0], 0)
 
+    def test_slug_keeps_turkish_letters_readable(self):
+        self.assertEqual(docs.slugify("Satış"), "satis")
+        self.assertEqual(docs.slugify("Çağrı Ölçüm İşi"), "cagri-olcum-isi")
+
     def test_id_increments(self):
         run("new", "adr", "First", "--root", self.root)
         run("new", "adr", "Second", "--root", self.root)
@@ -139,6 +143,30 @@ class NewTests(TempRoot):
             with self.subTest(kind):
                 self.assertEqual(run("new", kind, "x", "--root", self.root)[0], 0)
                 self.assertTrue((self.root / rel).exists(), rel)
+
+    def test_planning_kinds_prefixes_and_folders(self):
+        expected = {
+            "brief": "05-work/plans/BRIEF-0001-x.md",
+            "threat": "01-architecture/security/ARCH-0001-x.md",
+            "perf": "01-architecture/performance/ARCH-0002-x.md",
+            "quality": "05-work/plans/quality/PLAN-0001-x.md",
+        }
+        for kind, rel in expected.items():
+            with self.subTest(kind):
+                self.assertEqual(run("new", kind, "x", "--root", self.root)[0], 0)
+                self.assertTrue((self.root / rel).exists(), rel)
+        self.assertIn("## 5. Özellikler", (self.root / expected["brief"]).read_text())
+        self.assertEqual(run("lint", "--root", self.root)[0], 0)
+
+    def test_next_number(self):
+        self.assertEqual(docs.next_number(self.root, "T"), 1)
+        write_doc(self.root, "05-work/tasks/T-0004-x.md", id="T-0004")
+        self.assertEqual(docs.next_number(self.root, "T"), 5)
+
+    def test_plan_state_index_is_not_a_document(self):
+        (self.root / "05-work" / "plans").mkdir(parents=True)
+        (self.root / "05-work" / "plans" / "PLAN-0001.index.md").write_text("| ID |\n")
+        self.assertEqual(run("lint", "--root", self.root)[0], 0)
 
     def test_id_is_global_per_prefix_not_per_folder(self):
         write_doc(self.root, "elsewhere/whatever.md", id="ADR-0007")

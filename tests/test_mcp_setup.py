@@ -64,12 +64,13 @@ class TestSetupMcp(unittest.TestCase):
         r, calls = run_setup([], existing="playwright")
         self.assertEqual(r.returncode, 0, r.stderr)
         adds = [c for c in calls if c.startswith("mcp add")]
-        self.assertEqual(len(adds), 1)
+        self.assertEqual(len(adds), 2)
         self.assertIn("cloudflare-api", adds[0])
+        self.assertIn("context7", adds[1])
         self.assertIn("skip   playwright", r.stdout)
 
     def test_all_existing_adds_nothing(self):
-        r, calls = run_setup([], existing="playwright cloudflare-api")
+        r, calls = run_setup([], existing="playwright cloudflare-api context7")
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertEqual([c for c in calls if c.startswith("mcp add")], [])
 

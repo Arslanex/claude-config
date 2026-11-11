@@ -1,0 +1,29 @@
+diff --git a/app/interface/http/routes/billing.py b/app/interface/http/routes/billing.py
+index 3d1a9c2..b7e4f10 100644
+--- a/app/interface/http/routes/billing.py
++++ b/app/interface/http/routes/billing.py
+@@ -1,6 +1,9 @@
+ from fastapi import APIRouter
++from sqlalchemy import select
+ 
+ from app.features.billing import InvoiceOut, WalletServiceDep
++from app.infra.database.models import Invoice
++from app.interface.http.deps import SessionDep
+ 
+ router = APIRouter(prefix="/v1/billing", tags=["billing"])
+ 
+@@ -9,3 +12,14 @@ router = APIRouter(prefix="/v1/billing", tags=["billing"])
+ async def balance(svc: WalletServiceDep) -> BalanceOut:
+     """Current credit balance."""
+     return await svc.balance()
++
++
++@router.get("/invoices/overdue")
++async def overdue_invoices(session: SessionDep, days: int = 30) -> list[InvoiceOut]:
++    """Invoices that are past their due date."""
++    rows = (await session.execute(select(Invoice).where(Invoice.paid_at.is_(None)))).scalars().all()
++    overdue = []
++    for row in rows:
++        if row.age_in_days > days and row.amount > 0 and not row.disputed:
++            overdue.append(InvoiceOut(id=row.id, amount=row.amount, late_fee=row.amount * 0.02))
++    return overdue

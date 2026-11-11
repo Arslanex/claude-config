@@ -1,15 +1,26 @@
-diff --git a/docs/01-architecture/ARCH-0004-notlar-depolama.md b/docs/01-architecture/ARCH-0004-notlar-depolama.md
+diff --git a/docs/01-architecture/ARCH-0009-not-surumleri.md b/docs/01-architecture/ARCH-0009-not-surumleri.md
 new file mode 100644
-index 0000000..c3d9a41
+index 0000000..1a2b3c4
 --- /dev/null
-+++ b/docs/01-architecture/ARCH-0004-notlar-depolama.md
-@@ -0,0 +1,23 @@
-+# ARCH-0004: Notların yeni depolama modeli
++++ b/docs/01-architecture/ARCH-0009-not-surumleri.md
+@@ -0,0 +1,32 @@
++---
++id: ARCH-0009
++title: "Notların sürüm geçmişi"
++status: draft
++area: architecture
++owner:
++updated: 2026-11-10
++depends_on: [ARCH-0004]
++related: []
++superseded_by:
++code_paths: []
++---
 +
-+Durum: Taslak
++# ARCH-0009: Notların sürüm geçmişi
 +
-+## Bağlam
-+`notes` tablosu düz metin `body` tutuyor. Not geçmişi (sürümler) isteniyor.
++## Soru
++`notes` tablosu düz metin `body` tutuyor. Not geçmişi (sürümler) isteniyor; nasıl tutulur?
 +
 +## Karar
 +- Notlar olay kaynaklı (event sourcing) tutulur; durum Kafka üzerinden akan olaylardan yeniden kurulur.
@@ -17,13 +28,11 @@ index 0000000..c3d9a41
 +- Aynı sürümde `notes.body` sütunu silinir; veri `note_events` tablosuna taşınır.
 +- Taşıma betiği tek geçişte çalışır; yedek alınmaz.
 +
++## Neden
++İleride ölçek gerekebilir.
++
 +## Seçenekler
 +- `note_versions` tablosu: ileride ölçek gerekebileceği için seçilmedi.
 +
-+## Sonuçlar
-+- Tüm notlar olay akışından okunur.
-+
-+## Doğrulama
++## Nasıl denetlenir
 +Elle bakılır.
-+
-+Kullanıcı onayı gereken madde: yok.

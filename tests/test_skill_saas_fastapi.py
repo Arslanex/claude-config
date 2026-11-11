@@ -3,8 +3,14 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-PATH = ROOT / "src" / "skills" / "conduct" / "SKILL.md"
-AGENTS_DIR = ROOT / "src" / "agents"
+TEAM = ROOT / "src" / "templates" / "profiles" / "fastapi-saas" / "team"
+PATH = TEAM / "skills" / "saas-fastapi" / "SKILL.md"
+# Roles the skill routes to: shipped with the profile (team/agents) or installed globally (src/agents).
+AGENT_DIRS = (TEAM / "agents", ROOT / "src" / "agents")
+
+
+def agent_names():
+    return {p.stem for d in AGENT_DIRS for p in d.glob("*.md")}
 TEXT = PATH.read_text(encoding="utf-8")
 LINES = TEXT.split("\n")
 END = LINES.index("---", 1)
@@ -13,7 +19,7 @@ FIELDS = {k: v.strip() for k, v in FIELDS.items()}
 BODY = "\n".join(LINES[END + 1:])
 
 ROLES = ["architect", "backend", "frontend", "tester", "devops", "devils-advocate",
-         "arch-reviewer", "security-reviewer", "work-verifier", "file-explorer", "structure-explorer"]
+         "arch-reviewer", "security-reviewer", "file-explorer", "structure-explorer"]
 SIZES = ["XS", "S", "M", "L"]
 SECTIONS = ["Size", "Routing", "Task file", "Fix loop", "Ask the user", "Finish", "Safety", "Model choice"]
 
@@ -24,13 +30,14 @@ def section(title):
     return m.group(1)
 
 
-class ConductSkillTest(unittest.TestCase):
+class SaasFastapiSkillTest(unittest.TestCase):
     """Static checks only; the shared skill rules (line limit, known fields, no secrets) live in test_skills.py."""
 
     def test_file_exists_with_frontmatter(self):
         self.assertTrue(PATH.is_file())
         self.assertEqual(LINES[0], "---")
-        self.assertEqual(FIELDS["name"], "conduct")
+        self.assertEqual(FIELDS["name"], "saas-fastapi")
+        self.assertTrue(FIELDS["description"].endswith("Invoke manually with /saas-fastapi <task or request>"))
         self.assertEqual(FIELDS["name"], PATH.parent.name)
         self.assertGreater(len(FIELDS["description"]), 40)
         self.assertLessEqual(len(FIELDS["description"]), 250)
@@ -63,12 +70,11 @@ class ConductSkillTest(unittest.TestCase):
         names = set(re.findall(r"`([a-z]+(?:-[a-z]+)*)`", table))
         routed = names & set(ROLES)
         self.assertEqual(routed, set(ROLES), "every role must be routed")
-        for role in routed:
-            self.assertTrue((AGENTS_DIR / f"{role}.md").is_file(), role)
+        self.assertLessEqual(routed, agent_names())
 
     def test_every_backticked_agent_like_name_in_routing_is_a_real_file(self):
         table = section("Routing")
-        existing = {p.stem for p in AGENTS_DIR.glob("*.md")}
+        existing = agent_names()
         for row in table.splitlines():
             if row.startswith("|") and not row.startswith("|---") and not row.startswith("| Work"):
                 agent_cell = row.split("|")[2]
@@ -78,7 +84,7 @@ class ConductSkillTest(unittest.TestCase):
 
     def test_mlops_is_dormant_with_no_agent(self):
         self.assertRegex(section("Routing"), r"(?i)`mlops` is dormant")
-        self.assertFalse((AGENTS_DIR / "mlops.md").exists())
+        self.assertNotIn("mlops", agent_names())
 
     def test_task_file_template(self):
         body = section("Task file")
@@ -86,6 +92,18 @@ class ConductSkillTest(unittest.TestCase):
         for part in ("Goal", "Definition of done", "acceptance criteria", "writable paths", "the role"):
             self.assertIn(part, body)
         self.assertRegex(body, r"(?i)never the whole chat")
+
+    def test_conductor_creates_the_adr_file_for_the_architect(self):
+        body = section("Task file")
+        self.assertIn('For `architect`, also create the ADR draft with `python3 tools/docs.py new adr "<title>"`', body)
+
+    def test_team_spec_is_the_project_copy(self):
+        self.assertIn("(`.claude/team.md`)", BODY)
+        self.assertNotIn("docs/team/", BODY)
+        self.assertTrue((TEAM / "team.md").is_file())
+
+    def test_claude_config_only_agent_is_not_routed(self):
+        self.assertNotIn("work-verifier", BODY)
 
     def test_roles_are_the_installed_subagents(self):
         self.assertIn("Roles are the installed subagents (names in the routing table)", BODY)
@@ -109,11 +127,12 @@ class ConductSkillTest(unittest.TestCase):
         self.assertIn("`tester`", body)
         self.assertRegex(body, r"(?i)author never accepts their own work")
 
-    def test_five_question_points_and_planning_approval(self):
+    def test_six_question_points_and_planning_approval(self):
         body = section("Ask the user")
         items = re.findall(r"(?m)^\d+\. ", body)
-        self.assertEqual(len(items), 5)
-        for gate in ("Money", "Security", "Irreversible data", "critical `devils-advocate` objection", "three attempts"):
+        self.assertEqual(len(items), 6)
+        for gate in ("Money", "Security", "Irreversible data", "critical `devils-advocate` objection", "three attempts",
+                     "Design system approval, once per project"):
             self.assertIn(gate, body)
         self.assertRegex(body, r"(?i)planning approval.*once per project")
         self.assertRegex(body, r"(?i)everything else proceeds without asking")
@@ -122,7 +141,17 @@ class ConductSkillTest(unittest.TestCase):
         body = section("Ask the user")
         self.assertIn("The one-time pre-flight message about missing dependencies is the only other exception.", body)
         self.assertLess(body.index("everything else proceeds without asking"), body.index("only other exception"))
-        self.assertEqual(len(re.findall(r"(?m)^\d+\. ", body)), 5)
+        self.assertEqual(len(re.findall(r"(?m)^\d+\. ", body)), 6)
+
+    def test_frontend_work_runs_the_design_flow(self):
+        m = re.search(r"(?m)^- M: .*$", section("Size")).group(0)
+        self.assertIn("UI design flow", m)
+        self.assertRegex(m, r"only after the design system approval and when every page has a mockup")
+        self.assertIn("`ui-design`", section("Routing"))
+        self.assertIn("Playwright UI e2e", section("Routing"))
+
+    def test_roles_always_run_with_fake_workers(self):
+        self.assertIn("Roles always run with fake workers; live tests are the user's.", section("Safety"))
 
     def test_finish_is_a_short_summary_not_the_role_reports(self):
         body = section("Finish")

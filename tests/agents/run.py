@@ -4,6 +4,7 @@
 Costs tokens (one model call per case); run it via `make agent-eval`, not from `make check`.
 """
 import json
+import os
 import re
 import subprocess
 import sys
@@ -11,20 +12,36 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 AGENTS_DIR = ROOT / "src" / "agents"
+# Team roles ship with a profile (installed into the project's .claude/agents), not globally.
+PROFILE_AGENTS_DIR = ROOT / "src" / "templates" / "profiles" / "fastapi-saas" / "team" / "agents"
+AGENT_DIRS = (AGENTS_DIR, PROFILE_AGENTS_DIR)
 CASES_DIR = Path(__file__).resolve().parent / "cases"
 # Agents read the ARCH docs at docs/01-architecture/, so run from the profile that ships them.
 RUN_CWD = ROOT / "src" / "templates" / "profiles" / "fastapi-saas"
 
 # Flags verified against `claude --help`: both --agents (JSON) and --agent are supported.
-# --agents defines the agent from the src/ file; --agent selects it. The "eval-" prefix keeps
+# --agents defines the agent from its source file; --agent selects it. The "eval-" prefix keeps
 # it from colliding with an installed copy of the same agent.
 CLAUDE_BIN = "claude"
 AGENT_PREFIX = "eval-"
-BASE_FLAGS = ["-p", "--output-format", "stream-json", "--verbose", "--no-session-persistence"]
+# User settings are left out so the run does not depend on the local hooks (a Stop hook would run make check).
+BASE_FLAGS = ["-p", "--output-format", "stream-json", "--verbose", "--no-session-persistence", "--setting-sources", "project,local"]
 TIMEOUT_SECONDS = 300
 
 FINDING_RE = re.compile(r"^FINDING (?P<id>[A-Z][A-Z0-9-]*) (?P<level>\S+) (?P<loc>\S+:\d+) (?P<desc>.+)$")
 NO_FINDINGS = "NO FINDINGS"
+
+
+def agent_file(name):
+    """Path of the agent's source file, global or profile-shipped."""
+    for d in AGENT_DIRS:
+        if (d / f"{name}.md").is_file():
+            return d / f"{name}.md"
+    raise FileNotFoundError(f"no agent file for {name!r}")
+
+
+def reviewer_files():
+    return sorted(p for d in AGENT_DIRS for p in d.glob("*-reviewer.md"))
 
 
 def parse_agent(text):
@@ -34,11 +51,16 @@ def parse_agent(text):
         raise ValueError("frontmatter must start on line 1")
     end = lines.index("---", 1)
     fields = {}
+    key = None
     for line in lines[1:end]:
+        if line.startswith("  - ") and isinstance(fields.get(key), list):
+            fields[key].append(line[4:].strip())
+            continue
         key, sep, value = line.partition(":")
         if not sep:
             raise ValueError(f"bad frontmatter line: {line!r}")
-        fields[key.strip()] = value.strip()
+        key = key.strip()
+        fields[key] = value.strip() or []
     return fields, "\n".join(lines[end + 1:]).strip()
 
 
@@ -131,11 +153,13 @@ def build_command(agent_name, fields, body):
     spec = {name: {"description": fields.get("description", ""), "prompt": body, "tools": agent_tools(fields)}}
     if fields.get("model"):
         spec[name]["model"] = fields["model"]
+    if fields.get("skills"):
+        spec[name]["skills"] = fields["skills"]
     return [CLAUDE_BIN, *BASE_FLAGS, "--agents", json.dumps(spec), "--agent", name]
 
 
 def run_case(case):
-    fields, body = parse_agent((AGENTS_DIR / f"{case['agent']}.md").read_text(encoding="utf-8"))
+    fields, body = parse_agent(agent_file(case["agent"]).read_text(encoding="utf-8"))
     prompt = f"Review this diff:\n\n{case['patch']}"
     proc = subprocess.run(
         build_command(case["agent"], fields, body), input=prompt, capture_output=True,
@@ -153,7 +177,8 @@ def run_case(case):
 
 def main():
     failed = 0
-    cases = load_cases()
+    only = set(os.environ.get("CASES", "").split())
+    cases = [c for c in load_cases() if not only or c["name"] in only]
     for case in cases:
         try:
             problems = run_case(case)

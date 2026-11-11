@@ -113,3 +113,15 @@ class TestInstallPermissions(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestInstallConfigSource(unittest.TestCase):
+    def test_install_records_the_repo_path_and_dry_run_only_prints_it(self):
+        with tempfile.TemporaryDirectory() as home:
+            r = run_install(home, "--dry-run")
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertIn(f"[dry-run] write   {home}/.claude/config-source <- {ROOT}", r.stdout)
+            self.assertFalse((Path(home) / ".claude" / "config-source").exists())
+            r = run_install(home)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertEqual((Path(home) / ".claude" / "config-source").read_text(), f"{ROOT}\n")

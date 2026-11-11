@@ -48,7 +48,7 @@ class DevilsAdvocateAgentTest(unittest.TestCase):
     def test_severity_levels_are_defined(self):
         for level in LEVELS:
             self.assertIn(level, BODY)
-        self.assertRegex(BODY, r"CRITICAL goes to the user \(money, security, irreversible data\)")
+        self.assertIn("CRITICAL is the only level that blocks and goes to the user: data loss,", BODY)
 
     def test_severity_is_not_a_dictionary_id(self):
         self.assertFalse(set(LEVELS) & declared_ids())
@@ -89,7 +89,7 @@ class DevilsAdvocateAgentTest(unittest.TestCase):
         case = next(c for c in run.load_cases() if c["name"] == "adr-data-loss")
         self.assertEqual(set(case["expect"]), {"DATA-LOSS-RISK", "OVER-ENGINEERING"})
         self.assertFalse(case["clean"])
-        self.assertIn("Durum: Taslak", case["patch"])
+        self.assertIn("status: draft", case["patch"])
         self.assertIn("yedek alınmaz", case["patch"])
 
     def test_clean_case_forbids_the_whole_dictionary(self):

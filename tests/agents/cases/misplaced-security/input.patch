@@ -1,0 +1,32 @@
+diff --git a/app/infra/security/passwords.py b/app/infra/security/passwords.py
+new file mode 100644
+index 0000000..7c1d2aa
+--- /dev/null
++++ b/app/infra/security/passwords.py
+@@ -0,0 +1,14 @@
++"""Password hashing."""
++
++import hashlib
++import hmac
++import os
++
++
++def hash_password(password: str) -> str:
++    salt = os.urandom(16)
++    return salt.hex() + ":" + hashlib.scrypt(password.encode(), salt=salt, n=2**14, r=8, p=1).hex()
++
++
++def verify_password(password: str, stored: str) -> bool:
++    salt, digest = stored.split(":")
++    return hmac.compare_digest(hashlib.scrypt(password.encode(), salt=bytes.fromhex(salt), n=2**14, r=8, p=1).hex(), digest)
+diff --git a/app/features/identity/registration/service.py b/app/features/identity/registration/service.py
+index 4b1c0de..9a2f6e1 100644
+--- a/app/features/identity/registration/service.py
++++ b/app/features/identity/registration/service.py
+@@ -1,5 +1,6 @@
+ from app.features.identity.registration.errors import EMAIL_TAKEN
+ from app.features.identity.registration.schema import RegisterIn, RegisterOut
++from app.infra.security import hash_password
+ 
+ 
+ class RegistrationService:

@@ -8,7 +8,7 @@ spec = importlib.util.spec_from_file_location("agent_run", ROOT / "tests" / "age
 run = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(run)
 
-PATH = ROOT / "src" / "agents" / "tester.md"
+PATH = run.PROFILE_AGENTS_DIR / "tester.md"
 TEXT = PATH.read_text(encoding="utf-8")
 FIELDS, BODY = run.parse_agent(TEXT)
 TOOLS = ["Read", "Grep", "Glob", "Edit", "Write", "Bash"]
@@ -26,13 +26,13 @@ class TesterAgentTest(unittest.TestCase):
     """Static checks only: tester is not a *-reviewer, so the FINDING harness (make agent-eval) does not apply to it."""
 
     def test_frontmatter(self):
-        self.assertEqual(set(FIELDS), {"name", "description", "tools", "model"})
+        self.assertEqual(set(FIELDS), {"name", "description", "tools", "model", "skills"})
         self.assertEqual(FIELDS["name"], PATH.stem)
         self.assertGreater(len(FIELDS["description"]), 40)
         self.assertEqual(FIELDS["model"], "sonnet")
 
     def test_tools_are_the_minimal_set(self):
-        self.assertEqual(run.agent_tools(FIELDS), TOOLS)
+        self.assertEqual(run.agent_tools(FIELDS), [*TOOLS, "mcp__playwright__*", "mcp__context7__*", "Skill"])
 
     def test_model_matches_the_existing_working_agents(self):
         other, _ = run.parse_agent((run.AGENTS_DIR / "work-verifier.md").read_text(encoding="utf-8"))
@@ -103,6 +103,23 @@ class TesterAgentTest(unittest.TestCase):
     def test_output_contract(self):
         for section in ("Tests written", "Commands run", "Bugs found", "UNKNOWN", "Needs from the user", "Open risks"):
             self.assertIn(section, BODY)
+
+    def test_browser_check_includes_a_visual_check(self):
+        self.assertIn("## Browser check, visual too", BODY)
+        self.assertRegex(BODY, r"(?i)screenshot at desktop and at phone width")
+        self.assertRegex(BODY, r"(?i)browser-default styling")
+        self.assertRegex(BODY, r"(?i)reported like a bug")
+
+    def test_owns_ui_e2e_in_the_container_with_commands_from_team_md(self):
+        self.assertIn("## UI e2e (Playwright)", BODY)
+        self.assertRegex(BODY, r"run them yourself")
+        self.assertRegex(BODY, r"only in the e2e container")
+        self.assertIn("`.claude/team.md` (UI e2e)", BODY)
+        self.assertRegex(BODY, r"Never run a browser test on the host")
+
+    def test_never_runs_live_tests(self):
+        self.assertRegex(BODY, r"Tests always use the fake adapters")
+        self.assertRegex(BODY, r"Never run, enable or unskip a test marked live")
 
     def test_is_not_a_reviewer(self):
         self.assertFalse(PATH.name.endswith("-reviewer.md"))

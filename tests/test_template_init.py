@@ -19,7 +19,7 @@ class InitTestCase(unittest.TestCase):
         self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
         self.home = self.tmp / "home"
         shutil.copytree(TEMPLATES, self.home / ".claude" / "templates",
-                        ignore=shutil.ignore_patterns("__pycache__"))
+                        ignore=shutil.ignore_patterns("__pycache__", ".cache", ".cc-writes", ".venv", ".pytest_cache", ".mypy_cache", ".ruff_cache"))
         self.proj = self.tmp / "proj"
         self.proj.mkdir()
 
@@ -83,7 +83,7 @@ class TestInit(InitTestCase):
         lines = (self.proj / ".gitignore").read_text().splitlines()
         self.assertEqual(lines, ["node_modules", ".claude/settings.local.json",
                                  ".claude/session-state.md", "CLAUDE.local.md",
-                                 ".obsidian/", ".env", ".env.*", ".DS_Store"])
+                                 ".obsidian/", ".env", ".env.*", ".DS_Store", "*.proposed"])
 
     def test_existing_user_files_are_not_overwritten(self):
         (self.proj / "CLAUDE.md").write_text("mine\n")

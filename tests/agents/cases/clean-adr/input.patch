@@ -1,31 +1,40 @@
-diff --git a/docs/01-architecture/ARCH-0005-liste-sayfalama.md b/docs/01-architecture/ARCH-0005-liste-sayfalama.md
+diff --git a/docs/01-architecture/ARCH-0010-not-basligi-siniri.md b/docs/01-architecture/ARCH-0010-not-basligi-siniri.md
 new file mode 100644
-index 0000000..e7f2b08
+index 0000000..1a2b3c4
 --- /dev/null
-+++ b/docs/01-architecture/ARCH-0005-liste-sayfalama.md
-@@ -0,0 +1,25 @@
-+# ARCH-0005: Liste uç noktalarında imleç sayfalaması
++++ b/docs/01-architecture/ARCH-0010-not-basligi-siniri.md
+@@ -0,0 +1,34 @@
++---
++id: ARCH-0010
++title: "Not başlığının uzunluğu API girişinde denetlenir"
++status: draft
++area: architecture
++owner:
++updated: 2026-11-10
++depends_on: [ARCH-0005, ARCH-0007]
++related: []
++superseded_by:
++code_paths: []
++---
 +
-+Durum: Taslak
++# ARCH-0010: Not başlığının uzunluğu API girişinde denetlenir
 +
-+## Bağlam
-+Liste uç noktaları sınırsız satır dönüyor; büyük tenant'ta yanıt süresi ve bellek artıyor.
++## Soru
++`notes.title` sütunu veritabanında `varchar(200)`. API bu sınırı bilmiyor: 201 karakterlik başlık veritabanı hatasına dönüşüyor ve istemci 500 alıyor. Sınır nerede denetlenir?
 +
 +## Karar
-+- Tüm liste uç noktaları `limit` (varsayılan 50, en çok 100) ve opak `cursor` alır.
-+- Sıralama `(created_at, id)` ile sabittir; imleç bu çiftin kodlanmış halidir.
-+- Yanıt `items` ve `next_cursor` döner; son sayfada `next_cursor` null'dır.
-+- Geçersiz veya bozuk imleç RFC 9457 ile 422 döner (ARCH-0001, desen 3).
++- `NoteCreateIn` ve `NoteUpdateIn` şemalarında `title` alanı `max_length=200` alır; sütunla aynı sınır.
++- Sınırı aşan istek, FastAPI'nin şema doğrulamasıyla 422 döner; yeni hata kodu yoktur.
++- Bu şemaları yalnız HTTP uçları kullanır; not yazan bir worker işi yoktur.
++- Veritabanı sütunu, göç ve mevcut veri değişmez; sütun zaten 200 karakterden uzun değeri kabul etmiyor.
++
++## Neden
++Hata istemcinin girdisinden doğuyor; 500 yerine 422 dönmek istemciye neyi düzelteceğini söyler. Sınır sütunla aynı olduğu için bugün kaydedilebilen hiçbir başlık reddedilmez.
 +
 +## Seçenekler
-+- Offset/limit: yeni satır eklenince sayfa kayar ve derin sayfalar yavaşlar; seçilmedi.
-+- Yalnız `limit`: bütün veriye erişimi çözmez; seçilmedi.
++- Veritabanı hatasını yakalayıp 422'ye çevirmek: hata veritabanına gidip döndükten sonra anlaşılır ve her yazma yolunda ayrıca yakalanmalıdır; seçilmedi.
++- Sütunu `text` yapmak: sınırı kaldırır, ürün kararı ister; bu belgenin konusu değil.
 +
-+## Sonuçlar
-+- Mevcut istemciler `items` zarfına geçer; sözleşme değişikliği `make openapi` ve CI diff ile görünür olur.
-+- Eski sınırsız davranış korunmaz, `limit` verilmeyen istek 50 satır alır.
-+
-+## Doğrulama
-+Sözleşme testi: sınır, son sayfa, bozuk imleç. `make openapi` CI diff'i zarf değişikliğini yakalar.
-+
-+Kullanıcı onayı gereken madde: yok.
++## Nasıl denetlenir
++- Unit testleri: 200 karakter kabul edilir, 201 karakter 422 döner, hem oluşturma hem güncelleme için.
++- `make openapi-check`: sözleşmede `title` alanına `maxLength: 200` eklendiği görünür; bu eklemedir, var olan istemciyi bozmaz.

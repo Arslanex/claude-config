@@ -1,0 +1,10 @@
+{
+  "agent": "arch-reviewer",
+  "expect": [
+    "FLAT-LIB"
+  ],
+  "forbid": [
+    "LAYER-VIOLATION"
+  ],
+  "clean": false
+}

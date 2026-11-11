@@ -1,0 +1,10 @@
+{
+  "agent": "arch-reviewer",
+  "expect": [
+    "MISPLACED"
+  ],
+  "forbid": [
+    "LAYER-VIOLATION"
+  ],
+  "clean": false
+}

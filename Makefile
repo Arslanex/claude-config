@@ -8,6 +8,7 @@ help:
 	@echo "  test   run every tests/test_*.py (unittest) and tests/*.sh; run all, report failures at the end"
 	@echo "  check  currently the same as test (lint will be added later)"
 	@echo "  agent-eval  run the agent regression harness (calls claude, costs tokens)"
+	@echo "  agent-wiring  check with a live claude that each role agent sees its skills and MCP tools (costs tokens)"
 	@echo "  live-test   tests that need a live claude and network (not part of check)"
 	@echo "  hooks       enable the pre-push gate (runs make check before every push)"
 	@echo "  help   show this help"
@@ -41,6 +42,10 @@ check: test
 .PHONY: agent-eval
 agent-eval:
 	python3 tests/agents/run.py
+
+.PHONY: agent-wiring
+agent-wiring:
+	python3 tests/agents/wiring.py
 
 .PHONY: live-test
 live-test:

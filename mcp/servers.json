@@ -4,7 +4,13 @@
       "name": "playwright",
       "scope": "user",
       "transport": "stdio",
-      "command": ["npx", "-y", "@playwright/mcp@0.0.84", "--browser", "chromium"]
+      "command": [
+        "npx",
+        "-y",
+        "@playwright/mcp@0.0.84",
+        "--browser",
+        "chromium"
+      ]
     },
     {
       "name": "cloudflare-api",
@@ -12,6 +18,16 @@
       "transport": "http",
       "url": "https://mcp.cloudflare.com/mcp",
       "post_install": "Open Claude Code, run /mcp and authenticate with Cloudflare (OAuth)"
+    },
+    {
+      "name": "context7",
+      "scope": "user",
+      "transport": "stdio",
+      "command": [
+        "npx",
+        "-y",
+        "@upstash/context7-mcp@4.4.4"
+      ]
     }
   ]
 }

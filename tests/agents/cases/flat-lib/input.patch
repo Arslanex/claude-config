@@ -1,0 +1,58 @@
+diff --git a/app/lib/pricing/__init__.py b/app/lib/pricing/__init__.py
+new file mode 100644
+index 0000000..1a2b3c4
+--- /dev/null
++++ b/app/lib/pricing/__init__.py
+@@ -0,0 +1,8 @@
++"""Pricing rules."""
++
++from app.lib.pricing.discounts import apply_discount
++from app.lib.pricing.rounding import round_money
++from app.lib.pricing.taxes import add_tax
++from app.lib.pricing.tiers import tier_for
++
++__all__ = ["add_tax", "apply_discount", "round_money", "tier_for"]
+diff --git a/app/lib/pricing/discounts.py b/app/lib/pricing/discounts.py
+new file mode 100644
+index 0000000..2b3c4d5
+--- /dev/null
++++ b/app/lib/pricing/discounts.py
+@@ -0,0 +1,5 @@
++"""Discount rules."""
++
++
++def apply_discount(amount: int, percent: int) -> int:
++    return amount - amount * percent // 100
+diff --git a/app/lib/pricing/rounding.py b/app/lib/pricing/rounding.py
+new file mode 100644
+index 0000000..3c4d5e6
+--- /dev/null
++++ b/app/lib/pricing/rounding.py
+@@ -0,0 +1,5 @@
++"""Money rounding."""
++
++
++def round_money(amount: int, step: int = 5) -> int:
++    return amount - amount % step
+diff --git a/app/lib/pricing/taxes.py b/app/lib/pricing/taxes.py
+new file mode 100644
+index 0000000..4d5e6f7
+--- /dev/null
++++ b/app/lib/pricing/taxes.py
+@@ -0,0 +1,5 @@
++"""Tax rules."""
++
++
++def add_tax(amount: int, rate_percent: int) -> int:
++    return amount + amount * rate_percent // 100
+diff --git a/app/lib/pricing/tiers.py b/app/lib/pricing/tiers.py
+new file mode 100644
+index 0000000..5e6f7a8
+--- /dev/null
++++ b/app/lib/pricing/tiers.py
+@@ -0,0 +1,5 @@
++"""Plan tiers."""
++
++
++def tier_for(seats: int) -> str:
++    return "team" if seats > 5 else "solo"
